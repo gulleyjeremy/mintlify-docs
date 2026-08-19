@@ -152,5 +152,5 @@ You can update a subset of opportunity fields at any time by sending a `PATCH /v
 - `hardware.door_count`, `hardware.camera_count`, `hardware.existing_access_control`, `hardware.notes`
 
 <Warning>
-  The `stage`, `assigned_ae`, `assigned_se`, `install_partner`, and `projected_install_date` fields are **managed exclusively by the Rhombus team**. Any attempt to set these fields in a `PATCH` request will be silently ignored. To track changes to these fields, subscribe to webhook events — see [Webhooks](/guides/webhooks).
+  The `stage`, `assigned_ae`, `assigned_se`, `install_partner`, and `projected_install_date` fields are **managed exclusively by the Rhombus team**. Any attempt to set these fields in a `PATCH` request will be silently ignored. To track changes to these fields, subscribe to webhook events (`opportunity.stage_changed`, `opportunity.assigned`, `opportunity.scheduled`) — see [Webhooks](/guides/webhooks).
 </Warning>

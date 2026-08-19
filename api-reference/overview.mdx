@@ -1,7 +1,7 @@
 ---
-title: "Rhombus Ecosystem REST API Overview"
+title: "Rhombus Ecosystem REST API — Base URL, Auth, and Limits"
 sidebarTitle: "Overview"
-description: "The Ecosystem API is a REST API for managing partner opportunities. Learn base URLs, versioning, request format, and rate limits."
+description: "Reference for the Rhombus Ecosystem REST API: base URL, versioning, request format, rate limits, and pagination for all partner endpoints."
 ---
 
 The Rhombus Ecosystem REST API gives technology partners programmatic access to register deal opportunities and track them through the sales and installation pipeline. Instead of managing opportunities through the portal UI, you can integrate directly with your CRM or internal tooling to submit customer details, monitor pipeline stages, retrieve assigned Rhombus personnel, and stay in sync with scheduled installation timelines — all through standard HTTP requests.
@@ -67,7 +67,7 @@ When you exceed the limit, the API returns a `429 Too Many Requests` response. T
 
 ## Pagination
 
-All list endpoints (`GET /opportunities`, `GET /partners`, etc.) support cursor-free offset pagination. Use the following query parameters to control page size and position:
+All list endpoints (`GET /opportunities`, `GET /partners/users`, etc.) support cursor-free offset pagination. Use the following query parameters to control page size and position:
 
 | Parameter | Default | Maximum | Description |
 |---|---|---|---|

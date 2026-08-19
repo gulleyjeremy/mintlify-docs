@@ -1,7 +1,7 @@
 ---
-title: "Partner Accounts and Users in Rhombus Ecosystem"
+title: "Partner Accounts, Users, and API Keys in Rhombus Ecosystem"
 sidebarTitle: "Partner Accounts"
-description: "Understand how partner organizations, user roles, and API keys work in the Rhombus Ecosystem portal."
+description: "Understand how partner organizations, user roles, and API key scoping work together in the Rhombus Ecosystem portal to secure your integration."
 ---
 
 The Rhombus Ecosystem portal is organized around partner organizations. Each technology OEM that integrates with Rhombus has a single partner account, and all of that company's users — from admins managing API keys to members registering deals — operate within that shared organizational context. Understanding this structure helps you model your integration correctly and apply the right access controls.
@@ -16,7 +16,7 @@ The organization profile includes:
 - **Contact information** — primary business contact details for your account.
 - **Partner tier** — your current program tier (Registered, Silver, or Gold), which determines your rate limits and available features.
 
-You can retrieve your organization's profile via the API at `GET /v1/partner/profile`. Updates to the profile are currently handled through the portal UI.
+You can retrieve your organization's profile via the API at `GET /v1/partners/profile`. Updates to the profile are currently handled through the portal UI.
 
 ## Users
 

@@ -1,5 +1,5 @@
 ---
-title: "The Rhombus Opportunity Pipeline Explained"
+title: "Rhombus Opportunity Pipeline Stages and Tracking Guide"
 sidebarTitle: "Pipeline"
 description: "Follow a deal from submission through installation. Learn every pipeline stage, what triggers stage changes, and how to track progress via the API."
 ---
@@ -11,35 +11,35 @@ Once you register an opportunity, Rhombus moves it through a defined pipeline �
 Every opportunity begins at **Submitted** and advances through the following stages. Transitions are driven by actions taken by the Rhombus team — not by the partner.
 
 <Steps>
-  <Step title="Submitted">
+  <Step title="Submitted — stage: submitted">
     The opportunity has been received by the Rhombus Ecosystem API and is in the queue for review. No Rhombus team member has been assigned yet. Expect the opportunity to leave this stage within one business day.
   </Step>
 
-  <Step title="In Triage">
+  <Step title="In Triage — stage: in_triage">
     The Rhombus team is actively reviewing the deal, evaluating the hardware scope, and identifying the right Account Executive and Sales Engineer to assign. No outreach to the customer has occurred yet.
   </Step>
 
-  <Step title="AE Assigned">
+  <Step title="AE Assigned — stage: ae_assigned">
     An Account Executive has been assigned to the opportunity. The `assigned_ae` field is now populated. The AE will reach out to the customer contact to introduce Rhombus, qualify the deal, and move it forward. You receive an `opportunity.assigned` webhook event when this transition occurs.
   </Step>
 
-  <Step title="SE Engaged">
+  <Step title="SE Engaged — stage: se_engaged">
     A Sales Engineer is now actively working the technical aspects of the deal alongside the AE. The `assigned_se` field is populated. The SE typically conducts a site survey and designs the hardware solution with the customer.
   </Step>
 
-  <Step title="Pending Installation">
+  <Step title="Pending Installation — stage: pending_installation">
     The deal is closed and won. Rhombus is now coordinating with a certified installation partner to schedule the physical deployment. The `install_partner` field will be populated during this stage.
   </Step>
 
-  <Step title="Scheduled">
+  <Step title="Scheduled — stage: scheduled">
     The installation date has been confirmed and the installation partner is fully assigned. Both `projected_install_date` and `install_partner` are populated. You receive an `opportunity.scheduled` webhook event when this transition occurs.
   </Step>
 
-  <Step title="Installed">
+  <Step title="Installed — stage: installed">
     Installation is complete. The Rhombus hardware is live at the customer site. This is the successful terminal state for an opportunity.
   </Step>
 
-  <Step title="Closed Lost">
+  <Step title="Closed Lost — stage: closed_lost">
     The opportunity was not won. This is the unsuccessful terminal state. The record remains accessible via `GET /v1/opportunities/{id}` for your records, but no further stage transitions will occur.
   </Step>
 </Steps>
@@ -100,7 +100,10 @@ The response includes the current `stage`, all assigned personnel fields, and ti
 
 Subscribe to webhook events to receive instant notifications when Rhombus advances an opportunity. The following events are relevant to pipeline tracking:
 
-<CardGroup cols={3}>
+<CardGroup cols={2}>
+  <Card title="opportunity.created" icon="circle-plus">
+    Fires when a new opportunity is successfully registered. Use this to confirm receipt and store the Rhombus-assigned `id` in your CRM.
+  </Card>
   <Card title="opportunity.stage_changed" icon="arrow-right-arrow-left">
     Fires whenever an opportunity moves to a new pipeline stage. The payload includes the previous and current stage values.
   </Card>
