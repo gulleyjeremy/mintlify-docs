@@ -1,0 +1,115 @@
+---
+title: "The Rhombus Opportunity Pipeline Explained"
+sidebarTitle: "Pipeline"
+description: "Follow a deal from submission through installation. Learn every pipeline stage, what triggers stage changes, and how to track progress via the API."
+---
+
+Once you register an opportunity, Rhombus moves it through a defined pipeline — from initial review to scheduled installation and beyond. Each stage reflects where the deal stands in the Rhombus sales and deployment process, and both the API and webhooks give you full visibility into progress at every step. Understanding the pipeline helps you keep your CRM or internal systems in sync without manual effort.
+
+## Pipeline Stages
+
+Every opportunity begins at **Submitted** and advances through the following stages. Transitions are driven by actions taken by the Rhombus team — not by the partner.
+
+<Steps>
+  <Step title="Submitted">
+    The opportunity has been received by the Rhombus Ecosystem API and is in the queue for review. No Rhombus team member has been assigned yet. Expect the opportunity to leave this stage within one business day.
+  </Step>
+
+  <Step title="In Triage">
+    The Rhombus team is actively reviewing the deal, evaluating the hardware scope, and identifying the right Account Executive and Sales Engineer to assign. No outreach to the customer has occurred yet.
+  </Step>
+
+  <Step title="AE Assigned">
+    An Account Executive has been assigned to the opportunity. The `assigned_ae` field is now populated. The AE will reach out to the customer contact to introduce Rhombus, qualify the deal, and move it forward. You receive an `opportunity.assigned` webhook event when this transition occurs.
+  </Step>
+
+  <Step title="SE Engaged">
+    A Sales Engineer is now actively working the technical aspects of the deal alongside the AE. The `assigned_se` field is populated. The SE typically conducts a site survey and designs the hardware solution with the customer.
+  </Step>
+
+  <Step title="Pending Installation">
+    The deal is closed and won. Rhombus is now coordinating with a certified installation partner to schedule the physical deployment. The `install_partner` field will be populated during this stage.
+  </Step>
+
+  <Step title="Scheduled">
+    The installation date has been confirmed and the installation partner is fully assigned. Both `projected_install_date` and `install_partner` are populated. You receive an `opportunity.scheduled` webhook event when this transition occurs.
+  </Step>
+
+  <Step title="Installed">
+    Installation is complete. The Rhombus hardware is live at the customer site. This is the successful terminal state for an opportunity.
+  </Step>
+
+  <Step title="Closed Lost">
+    The opportunity was not won. This is the unsuccessful terminal state. The record remains accessible via `GET /v1/opportunities/{id}` for your records, but no further stage transitions will occur.
+  </Step>
+</Steps>
+
+<Info>
+  Projected install dates are estimates set by the installation partner based on their scheduling and site readiness. They can change as the deployment approaches. Subscribe to the `opportunity.scheduled` webhook event to receive real-time notifications whenever the install date is updated.
+</Info>
+
+---
+
+## What Rhombus Controls
+
+Stage transitions in the Rhombus pipeline are triggered exclusively by the Rhombus internal team — partners cannot manually advance, revert, or skip an opportunity to a different stage through the API. The following fields are fully managed by Rhombus and are read-only for partners:
+
+- **`stage`** — updated by the Rhombus team as the deal progresses
+- **`assigned_ae`** — set when an Account Executive is assigned during triage
+- **`assigned_se`** — set when a Sales Engineer joins the deal
+- **`install_partner`** — set when Rhombus selects a certified installer for the deployment
+- **`projected_install_date`** — set and updated by the installation partner
+
+This design ensures that the pipeline accurately reflects real-world deal state and that customers receive a consistent, coordinated experience from the Rhombus team. If you believe an opportunity is stuck in a stage or has been miscategorized, contact your Rhombus partner success manager directly.
+
+---
+
+## Tracking Progress
+
+You have two complementary methods for monitoring where an opportunity stands in the pipeline. Use them together for the most robust integration.
+
+### Polling
+
+Fetch the current state of any opportunity at any time with a `GET` request:
+
+```http
+GET /v1/opportunities/{id}
+Authorization: Bearer YOUR_API_KEY
+```
+
+The response includes the current `stage`, all assigned personnel fields, and timestamps. Polling is useful for on-demand status checks — for example, when a user loads a deal detail page in your CRM.
+
+```json
+{
+  "id": "opp_01hx9z3k4mbn2pqrst",
+  "name": "Acme Corp - Chicago HQ",
+  "stage": "SE Engaged",
+  "assigned_ae": "Jordan Rivera",
+  "assigned_se": "Taylor Nguyen",
+  "install_partner": null,
+  "projected_install_date": null,
+  "updated_at": "2025-06-10T14:32:00Z"
+}
+```
+
+<Note>
+  Avoid polling more frequently than once every five minutes. For real-time updates, use webhooks instead.
+</Note>
+
+### Webhooks
+
+Subscribe to webhook events to receive instant notifications when Rhombus advances an opportunity. The following events are relevant to pipeline tracking:
+
+<CardGroup cols={3}>
+  <Card title="opportunity.stage_changed" icon="arrow-right-arrow-left">
+    Fires whenever an opportunity moves to a new pipeline stage. The payload includes the previous and current stage values.
+  </Card>
+  <Card title="opportunity.assigned" icon="user-check">
+    Fires when an AE or SE is assigned to the opportunity. The payload includes the updated `assigned_ae` and `assigned_se` fields.
+  </Card>
+  <Card title="opportunity.scheduled" icon="calendar-check">
+    Fires when an installation date is confirmed. The payload includes the `projected_install_date` and `install_partner` fields.
+  </Card>
+</CardGroup>
+
+To set up a webhook endpoint and subscribe to these events, see the [Webhooks guide](/guides/webhooks).

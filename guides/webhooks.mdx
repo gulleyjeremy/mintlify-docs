@@ -1,0 +1,247 @@
+---
+title: "Receive Real-Time Updates with Ecosystem Webhooks"
+sidebarTitle: "Webhooks"
+description: "Configure Ecosystem webhooks to receive instant notifications when opportunity stages change, team members are assigned, or installations are scheduled."
+---
+
+Instead of polling the API for changes, webhooks push notifications to your server in real time whenever an opportunity moves through the pipeline. When a relevant event occurs — a stage change, an AE assignment, a confirmed install date — Ecosystem sends an HTTP `POST` request to your configured endpoint with the full event payload, typically within a few seconds of the change.
+
+<Warning>
+  Always verify the `X-Rhombus-Signature` header on every incoming webhook request before processing the payload. Skipping signature verification exposes your endpoint to spoofed requests that could corrupt your CRM data or trigger unintended workflow actions.
+</Warning>
+
+## Supported Events
+
+Ecosystem emits the following webhook events. Subscribe to only the events your integration needs.
+
+| Event | Trigger |
+|---|---|
+| `opportunity.created` | A new opportunity has been submitted via the API or the Ecosystem portal |
+| `opportunity.stage_changed` | The opportunity moved to a new pipeline stage |
+| `opportunity.assigned` | A Rhombus AE or SE has been assigned to the opportunity |
+| `opportunity.scheduled` | An install date and certified installation partner have been confirmed |
+| `opportunity.installed` | The installation has been marked complete by the install partner |
+
+## Configuring a Webhook Endpoint
+
+<Steps>
+  <Step title="Navigate to Settings > Webhooks">
+    Log in to the Ecosystem portal at [ecosystem.rhmbs.app](https://ecosystem.rhmbs.app) and go to **Settings > Webhooks** in the left navigation. This page lists all webhook endpoints configured for your partner account.
+  </Step>
+
+  <Step title="Add your endpoint">
+    Click **Add Endpoint** and fill in the configuration form:
+
+    - **URL** — Enter the full HTTPS URL where Ecosystem should deliver events (e.g., `https://integrations.yourcompany.com/webhooks/rhombus`). The URL must be publicly reachable and use HTTPS.
+    - **Events** — Select the events you want to receive. You can subscribe to individual events or select **All Events** to receive everything.
+    - **Description** — Optionally add a label to identify this endpoint (e.g., "Production CRM Sync").
+
+    <Info>
+      Your endpoint must respond with an HTTP `2xx` status code within 5 seconds. If it does not, Ecosystem marks the delivery as failed and schedules a retry. Make sure your handler is fast — offload any heavy processing to a background job.
+    </Info>
+  </Step>
+
+  <Step title="Save and copy the signing secret">
+    Click **Save Endpoint**. Ecosystem immediately displays a **signing secret** — a randomly generated string used to compute the `X-Rhombus-Signature` header on every request. Copy this value and store it securely (for example, as an environment variable named `RHOMBUS_WEBHOOK_SECRET`). 
+
+    You will not be able to view the signing secret again after closing this dialog. If you lose it, you can rotate it from the endpoint settings page, which will invalidate the old secret immediately.
+  </Step>
+</Steps>
+
+## Webhook Payload Structure
+
+Every webhook request is a `POST` with a JSON body and the `Content-Type: application/json` header. The structure is consistent across all event types; only the `data` object varies.
+
+The example below shows an `opportunity.stage_changed` event:
+
+```json
+{
+  "event": "opportunity.stage_changed",
+  "occurred_at": "2025-07-21T09:15:44Z",
+  "data": {
+    "opportunity_id": "opp_01J8KZMX4PQRV3TNWY6CDBF85",
+    "previous_stage": "ae_assigned",
+    "new_stage": "se_engaged",
+    "opportunity": {
+      "id": "opp_01J8KZMX4PQRV3TNWY6CDBF85",
+      "stage": "se_engaged",
+      "customer": {
+        "name": "Lakeside Medical Group",
+        "contact_name": "Sandra Ortiz",
+        "contact_email": "sortiz@lakesidemedical.com",
+        "contact_phone": "+13125550192"
+      },
+      "site": {
+        "address": "2847 N Michigan Ave",
+        "city": "Chicago",
+        "state": "IL",
+        "zip": "60657",
+        "country": "US"
+      },
+      "hardware": {
+        "door_count": 12,
+        "camera_count": 8,
+        "existing_access_control": "HID"
+      },
+      "assigned_ae": {
+        "id": "usr_ae_09BVTQK2",
+        "name": "Marcus Webb",
+        "email": "mwebb@rhombussystems.com"
+      },
+      "assigned_se": {
+        "id": "usr_se_04CRYLZP",
+        "name": "Priya Nair",
+        "email": "pnair@rhombussystems.com"
+      },
+      "install_partner": null,
+      "projected_close_date": "2025-09-30",
+      "projected_install_date": "2025-10-15",
+      "estimated_value_usd": 48000,
+      "notes": "Customer replacing aging HID system. IT Director is the decision maker.",
+      "created_at": "2025-07-14T18:43:02Z",
+      "updated_at": "2025-07-21T09:15:44Z"
+    }
+  }
+}
+```
+
+<Expandable title="Top-level payload fields">
+  <ResponseField name="event" type="string">
+    The event type. One of `opportunity.created`, `opportunity.stage_changed`, `opportunity.assigned`, `opportunity.scheduled`, or `opportunity.installed`.
+  </ResponseField>
+
+  <ResponseField name="occurred_at" type="string">
+    ISO 8601 timestamp indicating when the event occurred on the Rhombus side. Use this — not the time your server receives the request — for ordering events and auditing.
+  </ResponseField>
+
+  <ResponseField name="data.opportunity_id" type="string">
+    The unique ID of the opportunity that triggered the event. Use this to look up the corresponding record in your CRM.
+  </ResponseField>
+
+  <ResponseField name="data.previous_stage" type="string">
+    The pipeline stage the opportunity was in before this event. Present on `opportunity.stage_changed` events only.
+  </ResponseField>
+
+  <ResponseField name="data.new_stage" type="string">
+    The pipeline stage the opportunity moved into. Present on `opportunity.stage_changed` events only.
+  </ResponseField>
+
+  <ResponseField name="data.opportunity" type="object">
+    The full opportunity object reflecting the state after the event was applied. Use this to update your CRM record without making an additional `GET` request.
+  </ResponseField>
+</Expandable>
+
+## Verifying Webhook Signatures
+
+Each webhook request from Ecosystem includes an `X-Rhombus-Signature` header. The value is an HMAC-SHA256 digest of the raw request body, computed using your endpoint's signing secret. Verify this signature before processing any event.
+
+<Tabs>
+  <Tab title="Node.js">
+    ```javascript
+    const crypto = require("crypto");
+
+    /**
+     * Verifies the X-Rhombus-Signature header on an incoming webhook request.
+     * @param {string} rawBody - The raw (unparsed) request body as a string
+     * @param {string} signatureHeader - The value of the X-Rhombus-Signature header
+     * @param {string} secret - Your webhook signing secret
+     * @returns {boolean} True if the signature is valid
+     */
+    function verifyWebhookSignature(rawBody, signatureHeader, secret) {
+      const expectedSignature = crypto
+        .createHmac("sha256", secret)
+        .update(rawBody, "utf8")
+        .digest("hex");
+
+      const expected = Buffer.from(`sha256=${expectedSignature}`, "utf8");
+      const received = Buffer.from(signatureHeader, "utf8");
+
+      // Use timingSafeEqual to prevent timing attacks
+      if (expected.length !== received.length) return false;
+      return crypto.timingSafeEqual(expected, received);
+    }
+
+    // Example: Express.js middleware
+    app.post(
+      "/webhooks/rhombus",
+      express.raw({ type: "application/json" }),
+      (req, res) => {
+        const signature = req.headers["x-rhombus-signature"];
+        const secret = process.env.RHOMBUS_WEBHOOK_SECRET;
+
+        if (!verifyWebhookSignature(req.body.toString("utf8"), signature, secret)) {
+          console.error("Invalid webhook signature — request rejected.");
+          return res.status(401).json({ error: "Invalid signature" });
+        }
+
+        const event = JSON.parse(req.body);
+        // Process the event...
+        res.status(200).json({ received: true });
+      }
+    );
+    ```
+  </Tab>
+  <Tab title="Python">
+    ```python
+    import hashlib
+    import hmac
+    from flask import Flask, request, jsonify
+    import os
+
+    app = Flask(__name__)
+
+    def verify_webhook_signature(raw_body: bytes, signature_header: str, secret: str) -> bool:
+        """
+        Verifies the X-Rhombus-Signature header on an incoming webhook request.
+
+        Args:
+            raw_body: The raw request body as bytes
+            signature_header: The value of the X-Rhombus-Signature header
+            secret: Your webhook signing secret
+
+        Returns:
+            True if the signature is valid, False otherwise
+        """
+        expected_digest = hmac.new(
+            key=secret.encode("utf-8"),
+            msg=raw_body,
+            digestmod=hashlib.sha256,
+        ).hexdigest()
+
+        expected_signature = f"sha256={expected_digest}"
+
+        # Use compare_digest to prevent timing attacks
+        return hmac.compare_digest(expected_signature, signature_header)
+
+
+    @app.route("/webhooks/rhombus", methods=["POST"])
+    def handle_webhook():
+        signature = request.headers.get("X-Rhombus-Signature", "")
+        secret = os.environ["RHOMBUS_WEBHOOK_SECRET"]
+
+        if not verify_webhook_signature(request.get_data(), signature, secret):
+            print("Invalid webhook signature — request rejected.")
+            return jsonify({"error": "Invalid signature"}), 401
+
+        event = request.get_json()
+        # Process the event...
+        return jsonify({"received": True}), 200
+    ```
+  </Tab>
+</Tabs>
+
+<Tip>
+  Make sure you compute the HMAC over the **raw** request body — before JSON parsing. Many frameworks (like Express with `express.json()`) consume and parse the body before your middleware runs. Use `express.raw()` or an equivalent to preserve the original bytes for signature verification.
+</Tip>
+
+## Responding to Webhooks
+
+Your endpoint must return an HTTP `2xx` response code within **5 seconds** of receiving the request. Ecosystem treats any response outside the `2xx` range — or no response within the timeout — as a failed delivery and will retry automatically.
+
+**Retry schedule:** Ecosystem retries failed deliveries with exponential backoff for up to **72 hours** after the first attempt. The retry intervals are approximately 30 seconds, 5 minutes, 30 minutes, 2 hours, 8 hours, and 24 hours.
+
+**Best practices for reliable delivery:**
+
+- **Acknowledge immediately, process asynchronously.** Return `200 OK` as soon as you verify the signature, then push the event to a queue or background job for processing. This prevents your endpoint from timing out on slow database writes or downstream API calls.
+- **Make your handler idempotent.** Ecosystem guarantees at-least-once delivery, meaning the same event may arrive more than once in rare cases. Use the `data.opportunity_id` and `occurred_at` fields together as a deduplication key to avoid processing the same event twice.
+- **Do not rely on delivery order.** Events are generally delivered in order, but network conditions can cause occasional out-of-order arrivals. Always compare `occurred_at` timestamps when applying updates to your CRM rather than assuming the latest delivery is the latest event.

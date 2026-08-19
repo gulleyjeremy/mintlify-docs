@@ -1,0 +1,156 @@
+---
+title: "Opportunities: The Core Unit of the Rhombus Pipeline"
+sidebarTitle: "Opportunities"
+description: "An opportunity represents a potential Rhombus installation at a customer site. Learn the data model, required fields, and lifecycle of an opportunity."
+---
+
+An opportunity is how you tell Rhombus about a potential sale at a customer site. Each opportunity captures customer contact information, physical location details, and hardware requirements — and then moves through a defined pipeline of stages as the Rhombus team reviews, assigns, and ultimately schedules the installation. Every interaction with the Rhombus Ecosystem API revolves around creating and monitoring these opportunity records.
+
+## Opportunity Fields
+
+The following fields make up the opportunity data model. Fields returned by the API are documented below; some are read-only and managed entirely by Rhombus.
+
+<ResponseField name="id" type="string">
+  The unique identifier for the opportunity, assigned by the API at creation time. Use this value in all subsequent requests that reference this record.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  A human-readable, descriptive name for the deal. Use a format that makes the opportunity easy to identify at a glance — for example, `"Acme Corp - Chicago HQ"`.
+</ResponseField>
+
+<ResponseField name="stage" type="string">
+  The current pipeline stage for this opportunity. Managed by Rhombus; see [Pipeline Stages](/concepts/pipeline) for the full list of possible values.
+</ResponseField>
+
+<ResponseField name="customer" type="object" required>
+  An object containing information about the end customer at this site.
+
+  <Expandable title="customer fields">
+    <ResponseField name="customer.name" type="string" required>
+      The legal or trading name of the customer organization.
+    </ResponseField>
+
+    <ResponseField name="customer.contact_name" type="string">
+      Full name of the primary contact at the customer organization.
+    </ResponseField>
+
+    <ResponseField name="customer.contact_email" type="string" required>
+      Email address of the primary contact. Used by the assigned Rhombus AE for outreach.
+    </ResponseField>
+
+    <ResponseField name="customer.contact_phone" type="string">
+      Phone number of the primary contact, in any standard format.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="location" type="object" required>
+  The physical site where Rhombus hardware will be installed.
+
+  <Expandable title="location fields">
+    <ResponseField name="location.address" type="string" required>
+      Street address of the installation site.
+    </ResponseField>
+
+    <ResponseField name="location.city" type="string" required>
+      City of the installation site.
+    </ResponseField>
+
+    <ResponseField name="location.state" type="string" required>
+      State or province of the installation site.
+    </ResponseField>
+
+    <ResponseField name="location.zip" type="string">
+      Postal or ZIP code of the installation site.
+    </ResponseField>
+
+    <ResponseField name="location.country" type="string">
+      Country of the installation site. Defaults to `"US"` if omitted.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="hardware" type="object" required>
+  The hardware scope for the installation.
+
+  <Expandable title="hardware fields">
+    <ResponseField name="hardware.door_count" type="integer" required>
+      Number of doors that require access control hardware. Must be a positive integer.
+    </ResponseField>
+
+    <ResponseField name="hardware.camera_count" type="integer">
+      Number of cameras to be deployed at this site.
+    </ResponseField>
+
+    <ResponseField name="hardware.existing_access_control" type="string">
+      Description of any access control system currently in place at the site. Helps the Rhombus SE plan the integration approach.
+    </ResponseField>
+
+    <ResponseField name="hardware.notes" type="string">
+      Free-form notes about hardware requirements, site constraints, or other relevant technical context.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="assigned_ae" type="string | null">
+  The full name of the Rhombus Account Executive assigned to this opportunity. `null` until the Rhombus team completes triage and assignment.
+</ResponseField>
+
+<ResponseField name="assigned_se" type="string | null">
+  The full name of the Rhombus Sales Engineer engaged on the technical aspects of the deal. `null` until the SE is assigned.
+</ResponseField>
+
+<ResponseField name="install_partner" type="string | null">
+  The name of the Rhombus-certified installation partner responsible for the physical deployment. `null` until the deal reaches the **Pending Installation** stage.
+</ResponseField>
+
+<ResponseField name="projected_install_date" type="string | null">
+  The estimated installation date in ISO 8601 format (e.g., `"2025-09-15"`). Set by the installation partner and subject to change.
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  ISO 8601 datetime indicating when the opportunity was created via the API.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  ISO 8601 datetime indicating when the opportunity record was last modified by any party.
+</ResponseField>
+
+---
+
+## Required Fields When Creating
+
+When you submit a `POST /v1/opportunities` request, the following fields are required. Omitting any of them returns a `422 Unprocessable Entity` error.
+
+| Field | Type | Notes |
+|---|---|---|
+| `name` | string | Descriptive deal name |
+| `customer.name` | string | Customer organization name |
+| `customer.contact_email` | string | Valid email address |
+| `location.address` | string | Street address of the site |
+| `location.city` | string | City of the site |
+| `location.state` | string | State or province |
+| `hardware.door_count` | integer | Must be greater than `0` |
+
+All other fields are optional at creation time and can be added or updated later.
+
+<Tip>
+  Store the `id` returned in the API response directly in your CRM record for this deal. Using the Rhombus-assigned `id` in all future `GET`, `PATCH`, and webhook lookups ensures you always reference the correct opportunity, even if the deal name changes.
+</Tip>
+
+---
+
+## Updating Opportunities
+
+You can update a subset of opportunity fields at any time by sending a `PATCH /v1/opportunities/{id}` request with the fields you want to change. The following fields are writable by partners:
+
+- `name`
+- `customer.contact_name`
+- `customer.contact_email`
+- `customer.contact_phone`
+- `location.address`, `location.city`, `location.state`, `location.zip`, `location.country`
+- `hardware.door_count`, `hardware.camera_count`, `hardware.existing_access_control`, `hardware.notes`
+
+<Warning>
+  The `stage`, `assigned_ae`, `assigned_se`, `install_partner`, and `projected_install_date` fields are **managed exclusively by the Rhombus team**. Any attempt to set these fields in a `PATCH` request will be silently ignored. To track changes to these fields, subscribe to webhook events — see [Webhooks](/guides/webhooks).
+</Warning>

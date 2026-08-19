@@ -1,0 +1,263 @@
+---
+title: "POST /opportunities — Register a New Opportunity"
+sidebarTitle: "Create Opportunity"
+description: "POST /v1/opportunities — Submit a new deal opportunity to the Rhombus pipeline. Accepts customer, location, and hardware details. Returns the created opportunity."
+---
+
+Use this endpoint to register a new deal opportunity when one of your customers is interested in a Rhombus installation. The opportunity enters the Rhombus pipeline immediately upon submission, and the Rhombus team begins triage to assign an Account Executive and Solutions Engineer. All required customer, location, and hardware details must be included in the request body.
+
+## Request
+
+```http
+POST https://api.ecosystem.rhmbs.app/v1/opportunities
+```
+
+### Body Parameters
+
+<ParamField body="name" type="string" required>
+  A descriptive name for the opportunity. Use a value that clearly identifies the customer and engagement, such as `"Lakeside Medical Group – Chicago HQ"`.
+</ParamField>
+
+<ParamField body="customer" type="object" required>
+  Information about the end customer for this opportunity.
+
+  <Expandable title="customer fields">
+    <ParamField body="name" type="string" required>
+      Legal or operating name of the customer organization.
+    </ParamField>
+
+    <ParamField body="contact_name" type="string">
+      Full name of the primary contact at the customer organization.
+    </ParamField>
+
+    <ParamField body="contact_email" type="string" required>
+      Email address of the primary contact. Used by the assigned Rhombus AE to initiate outreach.
+    </ParamField>
+
+    <ParamField body="contact_phone" type="string">
+      Phone number of the primary contact, including country code (e.g., `+13125550182`).
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="location" type="object" required>
+  Physical address of the intended installation site.
+
+  <Expandable title="location fields">
+    <ParamField body="address" type="string" required>
+      Street address of the installation site.
+    </ParamField>
+
+    <ParamField body="city" type="string" required>
+      City of the installation site.
+    </ParamField>
+
+    <ParamField body="state" type="string" required>
+      Two-letter state or province code (e.g., `IL`).
+    </ParamField>
+
+    <ParamField body="zip" type="string">
+      Postal or ZIP code of the installation site.
+    </ParamField>
+
+    <ParamField body="country" type="string" default="US">
+      ISO 3166-1 alpha-2 country code. Defaults to `US`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="hardware" type="object" required>
+  Hardware requirements for the installation.
+
+  <Expandable title="hardware fields">
+    <ParamField body="door_count" type="integer" required>
+      Number of doors to be secured with Rhombus access control hardware.
+    </ParamField>
+
+    <ParamField body="camera_count" type="integer">
+      Number of cameras to be installed. Omit if cameras are not part of this opportunity.
+    </ParamField>
+
+    <ParamField body="existing_access_control" type="string">
+      Description of any existing access control system at the site (e.g., `"HID Prox readers, Lenel OnGuard"`). Helps the SE plan migration or integration.
+    </ParamField>
+
+    <ParamField body="notes" type="string">
+      Additional hardware notes, special requirements, or site conditions relevant to the installation.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="notes" type="string">
+  Internal notes visible to the assigned Rhombus AE. Use this field to provide deal context, urgency, or background that is not captured in the structured fields.
+</ParamField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.ecosystem.rhmbs.app/v1/opportunities \
+  --header 'Authorization: Bearer <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "name": "Lakeside Medical Group – Chicago HQ",
+    "customer": {
+      "name": "Lakeside Medical Group",
+      "contact_name": "Sandra Okafor",
+      "contact_email": "sokafor@lakesidemedical.example.com",
+      "contact_phone": "+13125550182"
+    },
+    "location": {
+      "address": "875 N Michigan Ave",
+      "city": "Chicago",
+      "state": "IL",
+      "zip": "60611",
+      "country": "US"
+    },
+    "hardware": {
+      "door_count": 12,
+      "camera_count": 8,
+      "existing_access_control": "HID Prox readers, no central management software",
+      "notes": "Server room and pharmacy require anti-passback. Loading dock needs outdoor-rated cameras."
+    },
+    "notes": "Customer has a hard deadline of Q3 for compliance audit. High priority — please expedite triage."
+  }'
+```
+
+```python Python
+import requests
+
+url = "https://api.ecosystem.rhmbs.app/v1/opportunities"
+headers = {
+    "Authorization": "Bearer <api-key>",
+    "Content-Type": "application/json",
+}
+payload = {
+    "name": "Lakeside Medical Group – Chicago HQ",
+    "customer": {
+        "name": "Lakeside Medical Group",
+        "contact_name": "Sandra Okafor",
+        "contact_email": "sokafor@lakesidemedical.example.com",
+        "contact_phone": "+13125550182",
+    },
+    "location": {
+        "address": "875 N Michigan Ave",
+        "city": "Chicago",
+        "state": "IL",
+        "zip": "60611",
+        "country": "US",
+    },
+    "hardware": {
+        "door_count": 12,
+        "camera_count": 8,
+        "existing_access_control": "HID Prox readers, no central management software",
+        "notes": "Server room and pharmacy require anti-passback. Loading dock needs outdoor-rated cameras.",
+    },
+    "notes": "Customer has a hard deadline of Q3 for compliance audit. High priority — please expedite triage.",
+}
+
+response = requests.post(url, json=payload, headers=headers)
+print(response.json())
+```
+
+</CodeGroup>
+
+## Response
+
+A successful request returns `201 Created` with the full opportunity object.
+
+### Response Fields
+
+<ResponseField name="id" type="string">
+  Unique identifier for the opportunity (UUID). Store this value to retrieve or update the opportunity later.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The descriptive name provided in the request.
+</ResponseField>
+
+<ResponseField name="stage" type="string">
+  Current pipeline stage. Always `submitted` immediately after creation.
+</ResponseField>
+
+<ResponseField name="customer" type="object">
+  The customer information submitted with the request.
+</ResponseField>
+
+<ResponseField name="location" type="object">
+  The installation site details submitted with the request.
+</ResponseField>
+
+<ResponseField name="hardware" type="object">
+  The hardware requirements submitted with the request.
+</ResponseField>
+
+<ResponseField name="assigned_ae" type="null | object">
+  The Rhombus Account Executive assigned to this opportunity. `null` until the Rhombus team completes triage.
+</ResponseField>
+
+<ResponseField name="assigned_se" type="null | object">
+  The Rhombus Solutions Engineer assigned to this opportunity. `null` until assigned.
+</ResponseField>
+
+<ResponseField name="install_partner" type="null | object">
+  The installation partner assigned to carry out the physical install. `null` until confirmed.
+</ResponseField>
+
+<ResponseField name="projected_install_date" type="null | string">
+  ISO 8601 date string for the projected installation date. `null` until scheduled.
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  ISO 8601 timestamp of when the opportunity was created.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  ISO 8601 timestamp of the most recent update to the opportunity.
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "id": "opp_01hx9z3kqe4vb8mnpj7wtrcfd2",
+  "name": "Lakeside Medical Group – Chicago HQ",
+  "stage": "submitted",
+  "customer": {
+    "name": "Lakeside Medical Group",
+    "contact_name": "Sandra Okafor",
+    "contact_email": "sokafor@lakesidemedical.example.com",
+    "contact_phone": "+13125550182"
+  },
+  "location": {
+    "address": "875 N Michigan Ave",
+    "city": "Chicago",
+    "state": "IL",
+    "zip": "60611",
+    "country": "US"
+  },
+  "hardware": {
+    "door_count": 12,
+    "camera_count": 8,
+    "existing_access_control": "HID Prox readers, no central management software",
+    "notes": "Server room and pharmacy require anti-passback. Loading dock needs outdoor-rated cameras."
+  },
+  "notes": "Customer has a hard deadline of Q3 for compliance audit. High priority — please expedite triage.",
+  "assigned_ae": null,
+  "assigned_se": null,
+  "install_partner": null,
+  "projected_install_date": null,
+  "created_at": "2025-06-04T14:22:08Z",
+  "updated_at": "2025-06-04T14:22:08Z"
+}
+```
+
+## Error Responses
+
+| Status | Code | Description |
+|--------|------|-------------|
+| `400 Bad Request` | `invalid_request` | The request body is malformed or missing the `Content-Type: application/json` header. |
+| `409 Conflict` | `duplicate_opportunity` | An opportunity with an identical customer email and location already exists in your partner account. Retrieve the existing opportunity before creating a new one. |
+| `422 Unprocessable Entity` | `validation_error` | One or more required fields are missing or fail validation (e.g., malformed email address, non-numeric `door_count`). The response body includes a `details` array identifying each invalid field. |

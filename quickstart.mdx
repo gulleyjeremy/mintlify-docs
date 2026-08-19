@@ -1,47 +1,207 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Get Started with Rhombus Ecosystem API"
+sidebarTitle: "Quickstart"
+description: "Make your first Rhombus Ecosystem API call in under 5 minutes. Authenticate, register an opportunity, and retrieve its pipeline status."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
-
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
-
-## Prerequisites
-
-Before you begin, you must have:
-
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+This guide walks you through everything you need to make your first Rhombus Ecosystem API call — from generating an API key in the portal to submitting a deal opportunity and reading back its pipeline status. By the end, you'll have a working integration foundation you can build on.
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+  <Step title="Obtain Your API Key">
+    Every API request must be authenticated with an API key tied to your partner account. To generate one:
 
-    ```bash
-    npm install your-package
+    1. Log in to the Ecosystem portal at [ecosystem.rhmbs.app](https://ecosystem.rhmbs.app).
+    2. Navigate to **Settings > API Keys**.
+    3. Click **Generate New Key** and give it a descriptive name (for example, `CRM Integration` or `Dev Testing`).
+    4. Copy the key immediately and store it somewhere secure, such as a password manager or secrets vault.
+
+    <Warning>
+      Your API key is displayed only once at the time of creation. If you navigate away without copying it, you'll need to revoke it and generate a new one.
+    </Warning>
+  </Step>
+
+  <Step title="Make Your First Request">
+    With your key in hand, make a `GET` request to list your existing opportunities. This confirms your credentials are working and returns any deals already registered under your partner account.
+
+    <CodeGroup>
+      ```bash curl
+      curl -X GET https://api.ecosystem.rhmbs.app/v1/opportunities \
+        -H "Authorization: Bearer YOUR_API_KEY" \
+        -H "Accept: application/json"
+      ```
+
+      ```python Python
+      import requests
+
+      url = "https://api.ecosystem.rhmbs.app/v1/opportunities"
+      headers = {
+          "Authorization": "Bearer YOUR_API_KEY",
+          "Accept": "application/json"
+      }
+
+      response = requests.get(url, headers=headers)
+      print(response.json())
+      ```
+    </CodeGroup>
+
+    A successful response returns an array of opportunity objects:
+
+    ```json
+    {
+      "data": [
+        {
+          "id": "opp_01hx4k2q9fzbnr7c8mp5vd3jae",
+          "name": "Acme Corp — Chicago HQ",
+          "stage": "triage",
+          "created_at": "2024-11-15T14:32:00Z"
+        },
+        {
+          "id": "opp_01hx4k2q9fzbnr7c8mp5vd3jbf",
+          "name": "Globex Office Park",
+          "stage": "ae_assigned",
+          "created_at": "2024-11-10T09:00:00Z"
+        }
+      ],
+      "meta": {
+        "total": 2,
+        "page": 1,
+        "per_page": 20
+      }
+    }
     ```
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
 
-    ```bash
-    your-cli init
+  <Step title="Register an Opportunity">
+    To submit a new deal, send a `POST` request to `/v1/opportunities` with your customer's details, location, and hardware specifications.
+
+    <CodeGroup>
+      ```bash curl
+      curl -X POST https://api.ecosystem.rhmbs.app/v1/opportunities \
+        -H "Authorization: Bearer YOUR_API_KEY" \
+        -H "Content-Type: application/json" \
+        -d '{
+          "customer_name": "Initech Solutions",
+          "location": {
+            "address": "1 Initech Plaza",
+            "city": "Austin",
+            "state": "TX"
+          },
+          "hardware": {
+            "door_count": 24,
+            "existing_access_control": "Lenel S2"
+          },
+          "notes": "Customer is looking to replace legacy access control across two floors."
+        }'
+      ```
+
+      ```python Python
+      import requests
+
+      url = "https://api.ecosystem.rhmbs.app/v1/opportunities"
+      headers = {
+          "Authorization": "Bearer YOUR_API_KEY",
+          "Content-Type": "application/json"
+      }
+      payload = {
+          "customer_name": "Initech Solutions",
+          "location": {
+              "address": "1 Initech Plaza",
+              "city": "Austin",
+              "state": "TX"
+          },
+          "hardware": {
+              "door_count": 24,
+              "existing_access_control": "Lenel S2"
+          },
+          "notes": "Customer is looking to replace legacy access control across two floors."
+      }
+
+      response = requests.post(url, json=payload, headers=headers)
+      print(response.json())
+      ```
+    </CodeGroup>
+
+    The API returns the newly created opportunity, starting in the `submitted` stage:
+
+    ```json
+    {
+      "data": {
+        "id": "opp_01hx4k9p3azcnr7d9qt6we5kcg",
+        "name": "Initech Solutions — Austin",
+        "stage": "submitted",
+        "customer_name": "Initech Solutions",
+        "location": {
+          "address": "1 Initech Plaza",
+          "city": "Austin",
+          "state": "TX"
+        },
+        "hardware": {
+          "door_count": 24,
+          "existing_access_control": "Lenel S2"
+        },
+        "notes": "Customer is looking to replace legacy access control across two floors.",
+        "created_at": "2024-11-20T18:45:00Z",
+        "updated_at": "2024-11-20T18:45:00Z"
+      }
+    }
     ```
   </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
 
-    ```bash
-    your-cli start
+  <Step title="Check Pipeline Status">
+    Use the opportunity `id` from the previous response to fetch the full pipeline record at any time. As Rhombus processes the deal, the response will include the assigned account executive, solutions engineer, and projected install date.
+
+    <CodeGroup>
+      ```bash curl
+      curl -X GET https://api.ecosystem.rhmbs.app/v1/opportunities/opp_01hx4k9p3azcnr7d9qt6we5kcg \
+        -H "Authorization: Bearer YOUR_API_KEY" \
+        -H "Accept: application/json"
+      ```
+
+      ```python Python
+      import requests
+
+      opp_id = "opp_01hx4k9p3azcnr7d9qt6we5kcg"
+      url = f"https://api.ecosystem.rhmbs.app/v1/opportunities/{opp_id}"
+      headers = {
+          "Authorization": "Bearer YOUR_API_KEY",
+          "Accept": "application/json"
+      }
+
+      response = requests.get(url, headers=headers)
+      print(response.json())
+      ```
+    </CodeGroup>
+
+    ```json
+    {
+      "data": {
+        "id": "opp_01hx4k9p3azcnr7d9qt6we5kcg",
+        "name": "Initech Solutions — Austin",
+        "stage": "ae_assigned",
+        "assigned_ae": {
+          "id": "usr_ae_029",
+          "name": "Jordan Lee",
+          "email": "jordan.lee@rhombus.com"
+        },
+        "assigned_se": {
+          "id": "usr_se_014",
+          "name": "Morgan Patel",
+          "email": "morgan.patel@rhombus.com"
+        },
+        "projected_install_date": "2025-01-15",
+        "created_at": "2024-11-20T18:45:00Z",
+        "updated_at": "2024-11-21T09:10:00Z"
+      }
+    }
     ```
   </Step>
 </Steps>
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
-
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>
+<CardGroup cols={2}>
+  <Card title="Core Concepts" icon="book-open" href="/concepts/partner-accounts">
+    Understand partner organizations, user roles, and API key scoping
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/overview">
+    Browse every endpoint, parameter, and response schema
+  </Card>
+</CardGroup>

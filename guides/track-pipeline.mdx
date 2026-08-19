@@ -1,0 +1,211 @@
+---
+title: "Track Opportunity Progress Through the Pipeline"
+sidebarTitle: "Track Pipeline"
+description: "Learn how to monitor deal progress, check assigned team members, and retrieve projected installation dates using the Ecosystem API."
+---
+
+After registering an opportunity, you can monitor its stage, see which Rhombus AE and SE are working it, and track the projected installation date — all through the API. This guide covers how to fetch a single opportunity by ID, list and filter all your opportunities, interpret the key response fields, and decide between polling and webhooks for your production integration.
+
+## Retrieve a Single Opportunity
+
+To check the current status of a specific deal, send a `GET` request to `/v1/opportunities/{id}` using the opportunity ID you saved when you registered it.
+
+```bash curl
+curl https://api.ecosystem.rhmbs.app/v1/opportunities/opp_01J8KZMX4PQRV3TNWY6CDBF85 \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+A successful request returns `200 OK` with the full opportunity object. The example below shows an opportunity that has progressed to the **SE Engaged** stage, with an assigned AE and SE and a projected install date populated.
+
+```json
+{
+  "id": "opp_01J8KZMX4PQRV3TNWY6CDBF85",
+  "stage": "se_engaged",
+  "customer": {
+    "name": "Lakeside Medical Group",
+    "contact_name": "Sandra Ortiz",
+    "contact_email": "sortiz@lakesidemedical.com",
+    "contact_phone": "+13125550192"
+  },
+  "site": {
+    "address": "2847 N Michigan Ave",
+    "city": "Chicago",
+    "state": "IL",
+    "zip": "60657",
+    "country": "US"
+  },
+  "hardware": {
+    "door_count": 12,
+    "camera_count": 8,
+    "existing_access_control": "HID"
+  },
+  "assigned_ae": {
+    "id": "usr_ae_09BVTQK2",
+    "name": "Marcus Webb",
+    "email": "mwebb@rhombussystems.com"
+  },
+  "assigned_se": {
+    "id": "usr_se_04CRYLZP",
+    "name": "Priya Nair",
+    "email": "pnair@rhombussystems.com"
+  },
+  "install_partner": null,
+  "projected_close_date": "2025-09-30",
+  "projected_install_date": "2025-10-15",
+  "estimated_value_usd": 48000,
+  "notes": "Customer replacing aging HID system. IT Director is the decision maker.",
+  "created_at": "2025-07-14T18:43:02Z",
+  "updated_at": "2025-07-21T09:15:44Z"
+}
+```
+
+## List All Opportunities
+
+To retrieve all opportunities associated with your partner account, send a `GET` request to `/v1/opportunities`. Use query parameters to filter by stage and paginate through large result sets.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `stage` | string | Filter results to a specific pipeline stage (e.g., `submitted`, `ae_assigned`, `se_engaged`, `pending_installation`, `installed`) |
+| `limit` | integer | Number of results per page. Default: `20`. Maximum: `100` |
+| `offset` | integer | Number of records to skip for pagination. Default: `0` |
+
+The example below fetches the first 20 opportunities in the `pending_installation` stage:
+
+```bash curl
+curl "https://api.ecosystem.rhmbs.app/v1/opportunities?stage=pending_installation&limit=20&offset=0" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+The response includes the matching opportunities along with pagination metadata:
+
+```json
+{
+  "data": [
+    {
+      "id": "opp_01J8KZMX4PQRV3TNWY6CDBF85",
+      "stage": "pending_installation",
+      "customer": {
+        "name": "Lakeside Medical Group",
+        "contact_name": "Sandra Ortiz",
+        "contact_email": "sortiz@lakesidemedical.com"
+      },
+      "site": {
+        "city": "Chicago",
+        "state": "IL"
+      },
+      "assigned_ae": {
+        "name": "Marcus Webb",
+        "email": "mwebb@rhombussystems.com"
+      },
+      "assigned_se": {
+        "name": "Priya Nair",
+        "email": "pnair@rhombussystems.com"
+      },
+      "install_partner": {
+        "id": "prt_07FXWLMC",
+        "name": "SecureTech Installations LLC"
+      },
+      "projected_install_date": "2025-10-15",
+      "updated_at": "2025-07-21T09:15:44Z"
+    },
+    {
+      "id": "opp_01J9PNRV2MQTW5UHDYB7KZXA3",
+      "stage": "pending_installation",
+      "customer": {
+        "name": "Northgate Logistics",
+        "contact_name": "Derek Huang",
+        "contact_email": "d.huang@northgatelogistics.com"
+      },
+      "site": {
+        "city": "Denver",
+        "state": "CO"
+      },
+      "assigned_ae": {
+        "name": "Alicia Ferreira",
+        "email": "aferreira@rhombussystems.com"
+      },
+      "assigned_se": {
+        "name": "Tom Kessler",
+        "email": "tkessler@rhombussystems.com"
+      },
+      "install_partner": {
+        "id": "prt_12HKZMRQ",
+        "name": "Alpine Security Solutions"
+      },
+      "projected_install_date": "2025-10-22",
+      "updated_at": "2025-07-20T14:30:11Z"
+    }
+  ],
+  "total_count": 7,
+  "limit": 20,
+  "offset": 0,
+  "has_more": false
+}
+```
+
+To fetch the next page, increment `offset` by the value of `limit`. Continue until `has_more` is `false`.
+
+## Interpreting the Response
+
+Focus on these fields when syncing opportunity data back to your CRM or internal systems:
+
+<ResponseField name="stage" type="string">
+  The current pipeline stage. Possible values are `submitted`, `ae_assigned`, `se_engaged`, `pending_installation`, and `installed`. Use this to drive status fields or workflow automations in your CRM.
+</ResponseField>
+
+<ResponseField name="assigned_ae" type="object | null">
+  The Rhombus Account Executive assigned to the deal. Contains `id`, `name`, and `email`. Returns `null` if no AE has been assigned yet.
+</ResponseField>
+
+<ResponseField name="assigned_se" type="object | null">
+  The Rhombus Sales Engineer engaged on the technical evaluation. Contains `id`, `name`, and `email`. Returns `null` until the SE engagement stage.
+</ResponseField>
+
+<ResponseField name="projected_install_date" type="string | null">
+  The estimated installation date in `YYYY-MM-DD` format, set once an install partner is confirmed. Returns `null` until the `pending_installation` stage.
+</ResponseField>
+
+<ResponseField name="install_partner" type="object | null">
+  The certified Rhombus installation partner assigned to perform the physical deployment. Contains `id` and `name`. Returns `null` until confirmed.
+</ResponseField>
+
+## Polling vs. Webhooks
+
+You have two options for monitoring opportunity changes: polling the API on a schedule, or configuring webhooks to receive push notifications.
+
+<Tabs>
+  <Tab title="Polling">
+    Polling means calling `GET /v1/opportunities` or `GET /v1/opportunities/{id}` on a recurring interval (for example, every 15 minutes) to check for changes.
+
+    **When it works well:**
+    - Simple integrations or one-off scripts
+    - Low-volume partner accounts with a small number of active opportunities
+    - Environments where inbound webhook infrastructure is difficult to set up
+
+    **Drawbacks:**
+    - Introduces latency between when a change happens and when you detect it
+    - Generates API calls even when nothing has changed, consuming your rate limit
+    - Does not scale well as your opportunity volume grows
+
+    If you do poll, use the `updated_at` field to detect which records have changed since your last sync, and avoid polling more frequently than once every 5 minutes.
+  </Tab>
+  <Tab title="Webhooks (Recommended)">
+    Webhooks deliver a push notification to your server the moment an opportunity changes — no polling required. Rhombus sends an HTTP `POST` request to your configured endpoint with the event payload.
+
+    **When to use webhooks:**
+    - Production integrations where real-time updates matter
+    - CRM sync workflows that need to reflect changes immediately
+    - Any integration handling more than a handful of active opportunities
+
+    **Benefits:**
+    - Near-instant updates with no wasted API calls
+    - Event-driven architecture that scales with your pipeline volume
+    - Rich payloads that include the full opportunity object alongside the change details
+
+    See the [Webhooks guide](/guides/webhooks) to configure your endpoint, verify signatures, and handle event payloads.
+  </Tab>
+</Tabs>
+
+<Tip>
+  Map the Ecosystem `stage` value to a custom field on your CRM opportunity record so your sales team always sees the Rhombus pipeline stage without leaving their existing tools. For example, create a field called **Rhombus Stage** in Salesforce or HubSpot and update it via the CRM API whenever you receive an `opportunity.stage_changed` webhook event.
+</Tip>

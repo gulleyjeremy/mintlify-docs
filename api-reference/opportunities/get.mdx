@@ -1,0 +1,251 @@
+---
+title: "GET /opportunities/{id} — Retrieve an Opportunity"
+sidebarTitle: "Get Opportunity"
+description: "GET /v1/opportunities/{id} — Fetch a single opportunity by ID. Returns full details including pipeline stage, assigned team, and projected install date."
+---
+
+Retrieve the full details of a specific opportunity, including its current pipeline stage, the Rhombus Account Executive and Solutions Engineer assigned to it, and the projected installation date. Use this endpoint to sync pipeline status into your CRM or display deal progress in your internal tooling.
+
+## Request
+
+```http
+GET https://api.ecosystem.rhmbs.app/v1/opportunities/{id}
+```
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique opportunity ID returned in the `id` field when the opportunity was created (e.g., `opp_01hx9z3kqe4vb8mnpj7wtrcfd2`).
+</ParamField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://api.ecosystem.rhmbs.app/v1/opportunities/opp_01hx9z3kqe4vb8mnpj7wtrcfd2 \
+  --header 'Authorization: Bearer <api-key>'
+```
+
+```python Python
+import requests
+
+opportunity_id = "opp_01hx9z3kqe4vb8mnpj7wtrcfd2"
+url = f"https://api.ecosystem.rhmbs.app/v1/opportunities/{opportunity_id}"
+headers = {
+    "Authorization": "Bearer <api-key>",
+}
+
+response = requests.get(url, headers=headers)
+print(response.json())
+```
+
+</CodeGroup>
+
+## Response
+
+A successful request returns `200 OK` with the full opportunity object.
+
+### Response Fields
+
+<ResponseField name="id" type="string">
+  Unique identifier for the opportunity (UUID).
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Descriptive name of the opportunity.
+</ResponseField>
+
+<ResponseField name="stage" type="string">
+  Current pipeline stage. Possible values: `submitted`, `in_triage`, `ae_assigned`, `se_engaged`, `pending_installation`, `scheduled`, `installed`, `closed_lost`.
+</ResponseField>
+
+<ResponseField name="customer" type="object">
+  Customer details for this opportunity.
+
+  <Expandable title="customer fields">
+    <ResponseField name="name" type="string">
+      Legal or operating name of the customer organization.
+    </ResponseField>
+
+    <ResponseField name="contact_name" type="string">
+      Full name of the primary contact at the customer organization.
+    </ResponseField>
+
+    <ResponseField name="contact_email" type="string">
+      Email address of the primary contact.
+    </ResponseField>
+
+    <ResponseField name="contact_phone" type="string">
+      Phone number of the primary contact.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="location" type="object">
+  Physical address of the installation site.
+
+  <Expandable title="location fields">
+    <ResponseField name="address" type="string">
+      Street address of the installation site.
+    </ResponseField>
+
+    <ResponseField name="city" type="string">
+      City of the installation site.
+    </ResponseField>
+
+    <ResponseField name="state" type="string">
+      Two-letter state or province code.
+    </ResponseField>
+
+    <ResponseField name="zip" type="string">
+      Postal or ZIP code.
+    </ResponseField>
+
+    <ResponseField name="country" type="string">
+      ISO 3166-1 alpha-2 country code.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="hardware" type="object">
+  Hardware requirements for the installation.
+
+  <Expandable title="hardware fields">
+    <ResponseField name="door_count" type="integer">
+      Number of doors to be secured with Rhombus access control hardware.
+    </ResponseField>
+
+    <ResponseField name="camera_count" type="integer">
+      Number of cameras to be installed.
+    </ResponseField>
+
+    <ResponseField name="existing_access_control" type="string">
+      Description of any existing access control system at the site.
+    </ResponseField>
+
+    <ResponseField name="notes" type="string">
+      Additional hardware notes or site conditions.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="notes" type="string">
+  Internal notes visible to the assigned Rhombus AE.
+</ResponseField>
+
+<ResponseField name="assigned_ae" type="null | object">
+  The Rhombus Account Executive assigned to this opportunity. `null` until assigned.
+
+  <Expandable title="assigned_ae fields">
+    <ResponseField name="id" type="string">
+      Unique identifier of the AE.
+    </ResponseField>
+
+    <ResponseField name="name" type="string">
+      Full name of the assigned AE.
+    </ResponseField>
+
+    <ResponseField name="email" type="string">
+      Work email address of the assigned AE.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="assigned_se" type="null | object">
+  The Rhombus Solutions Engineer assigned to this opportunity. `null` until assigned.
+
+  <Expandable title="assigned_se fields">
+    <ResponseField name="id" type="string">
+      Unique identifier of the SE.
+    </ResponseField>
+
+    <ResponseField name="name" type="string">
+      Full name of the assigned SE.
+    </ResponseField>
+
+    <ResponseField name="email" type="string">
+      Work email address of the assigned SE.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="install_partner" type="null | object">
+  The installation partner assigned to carry out the physical install. `null` until confirmed.
+
+  <Expandable title="install_partner fields">
+    <ResponseField name="id" type="string">
+      Unique identifier of the installation partner organization.
+    </ResponseField>
+
+    <ResponseField name="name" type="string">
+      Display name of the installation partner.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="projected_install_date" type="null | string">
+  ISO 8601 date string for the projected installation date. `null` until the opportunity is scheduled.
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  ISO 8601 timestamp of when the opportunity was created.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  ISO 8601 timestamp of the most recent update to the opportunity.
+</ResponseField>
+
+### Example Response
+
+The following response shows an opportunity that has advanced to the `se_engaged` stage, with both an AE and SE assigned.
+
+```json
+{
+  "id": "opp_01hx9z3kqe4vb8mnpj7wtrcfd2",
+  "name": "Lakeside Medical Group – Chicago HQ",
+  "stage": "se_engaged",
+  "customer": {
+    "name": "Lakeside Medical Group",
+    "contact_name": "Sandra Okafor",
+    "contact_email": "sokafor@lakesidemedical.example.com",
+    "contact_phone": "+13125550182"
+  },
+  "location": {
+    "address": "875 N Michigan Ave",
+    "city": "Chicago",
+    "state": "IL",
+    "zip": "60611",
+    "country": "US"
+  },
+  "hardware": {
+    "door_count": 12,
+    "camera_count": 8,
+    "existing_access_control": "HID Prox readers, no central management software",
+    "notes": "Server room and pharmacy require anti-passback. Loading dock needs outdoor-rated cameras."
+  },
+  "notes": "Customer has a hard deadline of Q3 for compliance audit. High priority — please expedite triage.",
+  "assigned_ae": {
+    "id": "usr_ae_0293xkpq",
+    "name": "Marcus Reyes",
+    "email": "mreyes@rhmbs.com"
+  },
+  "assigned_se": {
+    "id": "usr_se_0481zlmt",
+    "name": "Priya Nandakumar",
+    "email": "pnandakumar@rhmbs.com"
+  },
+  "install_partner": null,
+  "projected_install_date": null,
+  "created_at": "2025-06-04T14:22:08Z",
+  "updated_at": "2025-06-09T10:05:33Z"
+}
+```
+
+## Error Responses
+
+| Status | Code | Description |
+|--------|------|-------------|
+| `401 Unauthorized` | `unauthorized` | The API key is missing, expired, or invalid. Check that your `Authorization` header is correctly formatted. |
+| `404 Not Found` | `not_found` | No opportunity with the given ID exists in your partner account. Verify the ID and that the opportunity belongs to your account. |

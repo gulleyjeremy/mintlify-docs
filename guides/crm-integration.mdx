@@ -1,0 +1,208 @@
+---
+title: "Integrate the Ecosystem API with Your CRM"
+sidebarTitle: "CRM Integration"
+description: "Connect the Rhombus Ecosystem API to your CRM to automatically register opportunities and sync pipeline updates without touching the portal UI."
+---
+
+Integrating the Ecosystem API with your CRM lets your sales team register Rhombus opportunities from within your existing workflow and automatically receive pipeline updates as deals progress. Instead of manually logging into the Ecosystem portal to submit and check deals, your reps work entirely inside the tools they already use — the integration handles the rest behind the scenes.
+
+<Note>
+  Rhombus does not currently offer native CRM connectors for Salesforce, HubSpot, or other platforms. Integration is built and maintained by your team using the Ecosystem REST API described in this guide.
+</Note>
+
+## Integration Architecture
+
+The recommended architecture connects your CRM to the Ecosystem API through a lightweight integration layer — a serverless function, a middleware service, or a workflow automation tool. Here is how the data flows end to end:
+
+1. **CRM trigger** — A deal in your CRM reaches a qualifying stage (e.g., "Qualified" or "Solution Selected"). Your CRM fires a trigger, which invokes the integration layer.
+2. **Register in Ecosystem** — The integration layer calls `POST /v1/opportunities` with the mapped deal data. Rhombus creates the opportunity and returns a unique `id`.
+3. **Store the ID** — The integration layer writes the returned `id` back to a custom field on the CRM record (e.g., **Rhombus Opportunity ID**). This ID is the durable link between the two systems.
+4. **Receive webhook events** — As the opportunity moves through the Rhombus pipeline, Ecosystem sends `opportunity.stage_changed`, `opportunity.assigned`, and `opportunity.scheduled` events to your webhook endpoint.
+5. **Update the CRM** — Your webhook handler reads the event, looks up the CRM record by the stored `id`, and updates the relevant fields (stage, assigned AE, projected install date).
+
+This pattern keeps the two systems loosely coupled: the CRM remains the source of truth for your sales data, and Ecosystem remains the source of truth for Rhombus pipeline state.
+
+## Mapping CRM Fields to Opportunity Fields
+
+Use this reference when building the transformation logic inside your integration layer. The left column shows common CRM field names (terminology varies by platform); the right column shows the corresponding Ecosystem API field.
+
+| CRM Field | Ecosystem API Field | Notes |
+|---|---|---|
+| Account Name | `customer.name` | Use the legal entity name |
+| Primary Contact: Name | `customer.contact_name` | First and last name |
+| Primary Contact: Email | `customer.contact_email` | Required |
+| Primary Contact: Phone | `customer.contact_phone` | Format as E.164 (e.g., `+13125550192`) |
+| Billing Street | `site.address` | Installation site, not billing address if different |
+| Billing City | `site.city` | |
+| Billing State/Province | `site.state` | Two-letter code (e.g., `IL`, `CA`) |
+| Billing Zip/Postal Code | `site.zip` | |
+| Billing Country | `site.country` | ISO 3166-1 alpha-2 (default: `US`) |
+| Number of Doors (custom) | `hardware.door_count` | Integer |
+| Number of Cameras (custom) | `hardware.camera_count` | Integer |
+| Existing Access Control (custom) | `hardware.existing_access_control` | Free text (e.g., `HID`, `Lenel`) |
+| Expected Close Date | `projected_close_date` | Format as `YYYY-MM-DD` |
+| Amount / Deal Value | `estimated_value_usd` | Integer, USD only |
+| Description / Notes | `notes` | Visible to the assigned Rhombus AE |
+
+## Example: Registering from a CRM Workflow
+
+The function below accepts a CRM deal object, maps its fields to the Ecosystem payload shape, submits the opportunity, and returns the generated `id` so your workflow can store it back on the CRM record.
+
+```javascript
+const ECOSYSTEM_API_URL = "https://api.ecosystem.rhmbs.app/v1";
+const ECOSYSTEM_API_KEY = process.env.RHOMBUS_API_KEY;
+
+/**
+ * Registers a CRM deal as a Rhombus Ecosystem opportunity.
+ * @param {Object} dealData - The CRM deal object
+ * @returns {Promise<string>} The Ecosystem opportunity ID
+ */
+async function registerOpportunityFromCRM(dealData) {
+  const payload = {
+    customer: {
+      name: dealData.accountName,
+      contact_name: dealData.primaryContactName,
+      contact_email: dealData.primaryContactEmail,
+      contact_phone: dealData.primaryContactPhone ?? undefined,
+    },
+    site: {
+      address: dealData.billingStreet,
+      city: dealData.billingCity,
+      state: dealData.billingState,
+      zip: dealData.billingZip,
+      country: dealData.billingCountry ?? "US",
+    },
+    hardware: {
+      door_count: dealData.numberOfDoors ?? undefined,
+      camera_count: dealData.numberOfCameras ?? undefined,
+      existing_access_control: dealData.existingAccessControl ?? undefined,
+    },
+    projected_close_date: dealData.expectedCloseDate
+      ? new Date(dealData.expectedCloseDate).toISOString().split("T")[0]
+      : undefined,
+    estimated_value_usd: dealData.dealValue
+      ? Math.round(dealData.dealValue)
+      : undefined,
+    notes: dealData.description ?? undefined,
+  };
+
+  const response = await fetch(`${ECOSYSTEM_API_URL}/opportunities`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${ECOSYSTEM_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (response.status === 409) {
+    // Duplicate detected — retrieve and return the existing opportunity ID
+    const conflict = await response.json();
+    console.warn(
+      `Duplicate opportunity detected. Using existing ID: ${conflict.existing_opportunity_id}`
+    );
+    return conflict.existing_opportunity_id;
+  }
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(
+      `Ecosystem API error ${response.status}: ${error.message}`
+    );
+  }
+
+  const opportunity = await response.json();
+  return opportunity.id;
+}
+```
+
+Call this function from your CRM automation trigger and then write the returned `id` to the **Rhombus Opportunity ID** custom field on the deal record.
+
+## Syncing Status Back to Your CRM
+
+When Rhombus updates an opportunity (stage change, AE assignment, install date), Ecosystem sends a webhook event to your endpoint. The handler below processes `opportunity.stage_changed` events and updates the corresponding CRM record using the stored opportunity ID.
+
+```javascript
+const YOUR_CRM_CLIENT = require("./crm-client"); // your CRM SDK or API wrapper
+
+/**
+ * Handles an opportunity.stage_changed webhook event from Rhombus Ecosystem.
+ * @param {Object} event - The parsed webhook payload
+ */
+async function handleOpportunityStageChanged(event) {
+  if (event.event !== "opportunity.stage_changed") return;
+
+  const { opportunity_id, new_stage, previous_stage } = event.data;
+
+  console.log(
+    `Opportunity ${opportunity_id} moved from "${previous_stage}" to "${new_stage}"`
+  );
+
+  // Look up the CRM record by the stored Rhombus opportunity ID
+  const crmRecord = await YOUR_CRM_CLIENT.findByCustomField(
+    "rhombus_opportunity_id",
+    opportunity_id
+  );
+
+  if (!crmRecord) {
+    console.error(`No CRM record found for Ecosystem ID: ${opportunity_id}`);
+    return;
+  }
+
+  // Map the Ecosystem stage to your CRM's status field values
+  const stageMap = {
+    submitted: "Rhombus: Submitted",
+    ae_assigned: "Rhombus: AE Assigned",
+    se_engaged: "Rhombus: SE Engaged",
+    pending_installation: "Rhombus: Pending Installation",
+    installed: "Rhombus: Installed",
+  };
+
+  await YOUR_CRM_CLIENT.updateRecord(crmRecord.id, {
+    rhombusStage: stageMap[new_stage] ?? new_stage,
+    rhombusLastUpdated: event.occurred_at,
+    assignedAE: event.data.opportunity.assigned_ae?.name ?? null,
+    projectedInstallDate: event.data.opportunity.projected_install_date ?? null,
+  });
+
+  console.log(`CRM record ${crmRecord.id} updated successfully.`);
+}
+```
+
+For full details on verifying webhook signatures and configuring your endpoint, see the [Webhooks guide](/guides/webhooks).
+
+## Best Practices
+
+<Accordion title="Store the Ecosystem opportunity ID in your CRM for idempotency">
+  Always write the Ecosystem `id` back to a dedicated custom field (e.g., **Rhombus Opportunity ID**) immediately after a successful `POST /v1/opportunities` call. Before registering any new opportunity, check whether this field is already populated. If it is, skip the registration call and use the existing ID instead. This prevents duplicates if your automation trigger fires more than once for the same deal.
+</Accordion>
+
+<Accordion title="Use one API key per integration environment">
+  Generate a separate API key for each environment — development, staging, and production — from **Settings > API Keys** in the Ecosystem portal. Label each key clearly. Using distinct keys means you can rotate or revoke a compromised key in one environment without disrupting others, and it keeps test data out of your production opportunity pipeline.
+</Accordion>
+
+<Accordion title="Handle 429 rate limit errors with exponential backoff">
+  When the API returns `429 Too Many Requests`, do not immediately retry the request. Instead, implement exponential backoff: wait 1 second before the first retry, 2 seconds before the second, 4 seconds before the third, and so on, up to a maximum wait time. Check the `Retry-After` response header if present — it specifies the minimum number of seconds to wait before retrying.
+
+  ```javascript
+  async function callWithBackoff(fn, maxRetries = 5) {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (err) {
+        if (err.status === 429 && attempt < maxRetries - 1) {
+          const delay = Math.pow(2, attempt) * 1000;
+          console.warn(`Rate limited. Retrying in ${delay}ms...`);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        } else {
+          throw err;
+        }
+      }
+    }
+  }
+  ```
+</Accordion>
+
+<Accordion title="Log all API requests and responses for debugging">
+  Persist the full request payload and response body (including HTTP status code and response headers) for every Ecosystem API call your integration makes. Include a timestamp and a correlation ID that links the log entry to the originating CRM record or workflow run. When something goes wrong, these logs are the fastest way to identify whether the issue is a malformed payload, an API error, or a problem in your mapping logic.
+</Accordion>

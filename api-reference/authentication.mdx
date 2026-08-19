@@ -1,0 +1,122 @@
+---
+title: "API Authentication Reference for Ecosystem"
+sidebarTitle: "Authentication"
+description: "All Ecosystem API requests require a Bearer token. Reference for the Authorization header format, key scopes, and authentication error responses."
+---
+
+Every request to the Ecosystem API must include a valid API key in the `Authorization` header as a Bearer token. The API does not support session cookies, OAuth flows, or query-string tokens — the Bearer token is the only accepted credential. You create and manage your API keys in the Rhombus Ecosystem portal under **Settings > API Keys**. Each key is tied to your partner account and carries the permissions of the user who generated it.
+
+## Header Format
+
+Include the following header on every request, replacing `<your-api-key>` with the full key value you copied from the portal:
+
+```http
+Authorization: Bearer <your-api-key>
+```
+
+<Warning>
+  Never embed your API key in client-side code, public repositories, or log output. Treat it like a password. If a key is compromised, revoke it immediately from **Settings > API Keys** and generate a new one.
+</Warning>
+
+## Example Request
+
+The following examples show how to attach the Authorization header in common HTTP clients.
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://api.ecosystem.rhmbs.app/v1/opportunities \
+  --header "Authorization: Bearer YOUR_API_KEY" \
+  --header "Content-Type: application/json"
+```
+
+```python Python
+import requests
+
+API_KEY = "YOUR_API_KEY"
+BASE_URL = "https://api.ecosystem.rhmbs.app/v1"
+
+response = requests.get(
+    f"{BASE_URL}/opportunities",
+    headers={
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json",
+    },
+)
+
+print(response.json())
+```
+
+```javascript JavaScript
+const API_KEY = "YOUR_API_KEY";
+const BASE_URL = "https://api.ecosystem.rhmbs.app/v1";
+
+const response = await fetch(`${BASE_URL}/opportunities`, {
+  method: "GET",
+  headers: {
+    Authorization: `Bearer ${API_KEY}`,
+    "Content-Type": "application/json",
+  },
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+</CodeGroup>
+
+## Key Properties
+
+When you retrieve an API key object from the portal API, it contains the following fields.
+
+<ResponseField name="id" type="string" required>
+  Unique identifier for the API key. Use this to revoke or reference a specific key via the API.
+</ResponseField>
+
+<ResponseField name="label" type="string" required>
+  Human-readable name you assigned when creating the key (e.g., `"CRM Integration - Production"`).
+</ResponseField>
+
+<ResponseField name="created_at" type="string" required>
+  ISO 8601 timestamp indicating when the key was generated (e.g., `"2025-04-15T14:30:00Z"`).
+</ResponseField>
+
+<ResponseField name="last_used_at" type="string">
+  ISO 8601 timestamp of the most recent successful request authenticated with this key. Returns `null` if the key has never been used.
+</ResponseField>
+
+<ResponseField name="revoked" type="boolean" required>
+  `true` if the key has been revoked and can no longer authenticate requests. Revoked keys are retained in the list for audit purposes but will return a `401` error on use.
+</ResponseField>
+
+## Error Responses
+
+When authentication fails, the API returns one of the following errors. All authentication errors share the same JSON body structure.
+
+| HTTP Status | Error Code | Description |
+|---|---|---|
+| `401` | `missing_token` | No `Authorization` header was provided with the request. |
+| `401` | `invalid_token` | The token is malformed, unrecognized, or does not exist in the system. |
+| `401` | `revoked_token` | The token is structurally valid but has been revoked and can no longer be used. |
+| `403` | `insufficient_permissions` | The token is valid, but the action you attempted is not permitted for this key's account. |
+| `429` | `rate_limit_exceeded` | Too many requests were sent in the current window. Check the `Retry-After` header for how long to wait. |
+
+Every authentication error returns a JSON body in this format:
+
+```json
+{
+  "error": {
+    "code": "invalid_token",
+    "message": "The provided API key is invalid or has been revoked."
+  }
+}
+```
+
+<Note>
+  `403 Forbidden` indicates the key itself is valid — the problem is that the account associated with the key does not have permission to perform that specific action. Check with your Rhombus partner manager if you believe your account should have access.
+</Note>
+
+<Tip>
+  For a step-by-step walkthrough on generating API keys, rotating them, and setting up your first authenticated request, see the [Authentication Guide](/authentication).
+</Tip>

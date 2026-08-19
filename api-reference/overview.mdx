@@ -1,0 +1,110 @@
+---
+title: "Rhombus Ecosystem REST API Overview"
+sidebarTitle: "Overview"
+description: "The Ecosystem API is a REST API for managing partner opportunities. Learn base URLs, versioning, request format, and rate limits."
+---
+
+The Rhombus Ecosystem REST API gives technology partners programmatic access to register deal opportunities and track them through the sales and installation pipeline. Instead of managing opportunities through the portal UI, you can integrate directly with your CRM or internal tooling to submit customer details, monitor pipeline stages, retrieve assigned Rhombus personnel, and stay in sync with scheduled installation timelines — all through standard HTTP requests.
+
+## Base URL
+
+All API endpoints are relative to the following base URL. Every request you make must begin with this prefix.
+
+```
+https://api.ecosystem.rhmbs.app/v1
+```
+
+For example, to list your opportunities, you would send a `GET` request to `https://api.ecosystem.rhmbs.app/v1/opportunities`.
+
+## Versioning
+
+The API is versioned through the URL path. The current and only active version is **v1**, reflected in the `/v1` segment of every endpoint URL. Rhombus will introduce breaking changes under a new version path (e.g., `/v2`) and will announce the transition with a deprecation window so you have time to migrate. Non-breaking additions — such as new optional fields or new endpoints — may be added to the current version at any time without notice.
+
+## Request Format
+
+Follow these conventions for all API requests:
+
+- **POST and PATCH requests** must include the `Content-Type: application/json` header and send a valid JSON body.
+- **All responses** are returned as JSON, regardless of the HTTP method used.
+- **Dates and timestamps** use [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) format in UTC (e.g., `2025-04-15T14:30:00Z`).
+
+The example below shows a minimal valid POST request to create an opportunity:
+
+```bash
+curl --request POST \
+  --url https://api.ecosystem.rhmbs.app/v1/opportunities \
+  --header "Authorization: Bearer YOUR_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "customer": {
+      "company_name": "Acme Corp",
+      "contact_email": "jane.doe@acme.com"
+    },
+    "location": {
+      "address": "123 Main St",
+      "city": "Sacramento",
+      "state": "CA",
+      "zip": "95814"
+    }
+  }'
+```
+
+## Rate Limits
+
+The API enforces a limit of **300 requests per minute** per API key. Every response includes the following headers so you can monitor your current usage:
+
+| Header | Description |
+|---|---|
+| `X-RateLimit-Limit` | Maximum requests allowed per minute |
+| `X-RateLimit-Remaining` | Requests remaining in the current window |
+| `X-RateLimit-Reset` | Unix timestamp (UTC) when the window resets |
+
+When you exceed the limit, the API returns a `429 Too Many Requests` response. The response also includes a `Retry-After` header indicating how many seconds to wait before retrying.
+
+<Warning>
+  Requests that return `429` still count against your limit window. Do not immediately retry — wait the number of seconds specified in the `Retry-After` header before resuming requests.
+</Warning>
+
+## Pagination
+
+All list endpoints (`GET /opportunities`, `GET /partners`, etc.) support cursor-free offset pagination. Use the following query parameters to control page size and position:
+
+| Parameter | Default | Maximum | Description |
+|---|---|---|---|
+| `limit` | `20` | `100` | Number of records to return |
+| `offset` | `0` | — | Number of records to skip before returning results |
+
+Every list response includes a consistent envelope so you can navigate pages programmatically:
+
+```json
+{
+  "data": [ /* array of resource objects */ ],
+  "total_count": 84,
+  "limit": 20,
+  "offset": 40,
+  "has_more": true
+}
+```
+
+- `data` — the array of returned resource objects for this page
+- `total_count` — total number of records matching your query
+- `limit` — the page size applied to this response
+- `offset` — the starting position of this page
+- `has_more` — `true` if additional pages exist beyond this one
+
+<Tip>
+  To retrieve the next page, increment `offset` by the value of `limit`. Stop when `has_more` returns `false`.
+</Tip>
+
+## Resources
+
+Explore the two primary resource groups available in the Ecosystem API.
+
+<CardGroup cols={2}>
+  <Card title="Opportunities" icon="briefcase" href="/api-reference/opportunities">
+    Register new deal opportunities, update hardware specs, and track stage progression through the Rhombus sales and installation pipeline.
+  </Card>
+  <Card title="Partners" icon="handshake" href="/api-reference/partners">
+    Manage your partner profile, list and invite users, and configure your partner account settings programmatically.
+  </Card>
+</CardGroup>

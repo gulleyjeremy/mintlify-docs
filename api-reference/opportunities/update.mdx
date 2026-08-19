@@ -1,0 +1,174 @@
+---
+title: "PATCH /opportunities/{id} — Update an Opportunity"
+sidebarTitle: "Update Opportunity"
+description: "PATCH /v1/opportunities/{id} — Update editable fields on an existing opportunity. Stage, assignments, and install dates are managed by the Rhombus team."
+---
+
+You can update certain fields on an opportunity after it has been submitted — such as contact details, hardware counts, and notes. Pipeline stage, team assignments, and install dates are managed exclusively by the Rhombus team and cannot be set through the API. Send only the fields you want to change; omitted fields retain their current values.
+
+## Editable vs. Read-Only Fields
+
+<Note>
+  **Fields you can update via PATCH:**
+  - `customer.contact_name`
+  - `customer.contact_email`
+  - `customer.contact_phone`
+  - `hardware.door_count`
+  - `hardware.camera_count`
+  - `hardware.existing_access_control`
+  - `hardware.notes`
+  - `notes`
+
+  **Fields managed by Rhombus (read-only):**
+  - `stage` — advanced by the Rhombus team as the deal progresses
+  - `assigned_ae` — set by Rhombus during triage
+  - `assigned_se` — set by Rhombus after AE engagement
+  - `install_partner` — confirmed by Rhombus operations
+  - `projected_install_date` — scheduled by Rhombus and the installation partner
+
+  Attempting to include a read-only field in the request body returns a `400 Bad Request` error.
+</Note>
+
+## Request
+
+```http
+PATCH https://api.ecosystem.rhmbs.app/v1/opportunities/{id}
+```
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique opportunity ID returned when the opportunity was created.
+</ParamField>
+
+### Body Parameters
+
+All body parameters are optional. Include only the fields you want to change.
+
+<ParamField body="notes" type="string">
+  Updated internal notes visible to the assigned Rhombus AE.
+</ParamField>
+
+<ParamField body="customer" type="object">
+  Partial customer update. You may include any subset of the editable customer fields.
+
+  <Expandable title="customer fields">
+    <ParamField body="contact_name" type="string">
+      Updated full name of the primary contact.
+    </ParamField>
+
+    <ParamField body="contact_email" type="string">
+      Updated email address of the primary contact.
+    </ParamField>
+
+    <ParamField body="contact_phone" type="string">
+      Updated phone number of the primary contact, including country code.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="hardware" type="object">
+  Partial hardware update. You may include any subset of the editable hardware fields.
+
+  <Expandable title="hardware fields">
+    <ParamField body="door_count" type="integer">
+      Updated number of doors to be secured.
+    </ParamField>
+
+    <ParamField body="camera_count" type="integer">
+      Updated number of cameras to be installed.
+    </ParamField>
+
+    <ParamField body="existing_access_control" type="string">
+      Updated description of the existing access control system at the site.
+    </ParamField>
+
+    <ParamField body="notes" type="string">
+      Updated hardware-specific notes or site conditions.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Example Request
+
+The following request updates the primary contact email and increases the door count after a site survey revealed two additional entry points.
+
+```bash cURL
+curl --request PATCH \
+  --url https://api.ecosystem.rhmbs.app/v1/opportunities/opp_01hx9z3kqe4vb8mnpj7wtrcfd2 \
+  --header 'Authorization: Bearer <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "customer": {
+      "contact_email": "s.okafor.facilities@lakesidemedical.example.com"
+    },
+    "hardware": {
+      "door_count": 14
+    }
+  }'
+```
+
+<Tip>
+  Only the fields you include in the request body are modified. The `contact_name`, `contact_phone`, and all other fields on the opportunity remain unchanged.
+</Tip>
+
+## Response
+
+A successful request returns `200 OK` with the full updated opportunity object, reflecting all applied changes.
+
+### Example Response
+
+```json
+{
+  "id": "opp_01hx9z3kqe4vb8mnpj7wtrcfd2",
+  "name": "Lakeside Medical Group – Chicago HQ",
+  "stage": "se_engaged",
+  "customer": {
+    "name": "Lakeside Medical Group",
+    "contact_name": "Sandra Okafor",
+    "contact_email": "s.okafor.facilities@lakesidemedical.example.com",
+    "contact_phone": "+13125550182"
+  },
+  "location": {
+    "address": "875 N Michigan Ave",
+    "city": "Chicago",
+    "state": "IL",
+    "zip": "60611",
+    "country": "US"
+  },
+  "hardware": {
+    "door_count": 14,
+    "camera_count": 8,
+    "existing_access_control": "HID Prox readers, no central management software",
+    "notes": "Server room and pharmacy require anti-passback. Loading dock needs outdoor-rated cameras."
+  },
+  "notes": "Customer has a hard deadline of Q3 for compliance audit. High priority — please expedite triage.",
+  "assigned_ae": {
+    "id": "usr_ae_0293xkpq",
+    "name": "Marcus Reyes",
+    "email": "mreyes@rhmbs.com"
+  },
+  "assigned_se": {
+    "id": "usr_se_0481zlmt",
+    "name": "Priya Nandakumar",
+    "email": "pnandakumar@rhmbs.com"
+  },
+  "install_partner": null,
+  "projected_install_date": null,
+  "created_at": "2025-06-04T14:22:08Z",
+  "updated_at": "2025-06-10T16:48:22Z"
+}
+```
+
+## Error Responses
+
+| Status | Code | Description |
+|--------|------|-------------|
+| `400 Bad Request` | `readonly_field` | The request body includes one or more read-only fields (`stage`, `assigned_ae`, `assigned_se`, `install_partner`, or `projected_install_date`). Remove those fields and resubmit. The response body identifies the offending fields in a `details` array. |
+| `401 Unauthorized` | `unauthorized` | The API key is missing, expired, or invalid. Check that your `Authorization` header is correctly formatted. |
+| `404 Not Found` | `not_found` | No opportunity with the given ID exists in your partner account. |
+| `422 Unprocessable Entity` | `validation_error` | One or more field values fail validation (e.g., malformed email address, negative `door_count`). The response body includes a `details` array identifying each invalid field. |
+
+<Warning>
+  If you receive a `400 readonly_field` error, check the `details` array in the response body for a list of the rejected field names. For example: `{ "error": "readonly_field", "details": ["stage", "assigned_ae"] }`. Remove those fields from your request and retry.
+</Warning>

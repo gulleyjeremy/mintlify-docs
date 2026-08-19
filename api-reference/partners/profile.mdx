@@ -1,0 +1,115 @@
+---
+title: "GET /partners/profile — Retrieve Partner Profile"
+sidebarTitle: "Partner Profile"
+description: "GET /v1/partners/profile — Returns the partner organization profile including name, contact information, and current partner tier."
+---
+
+Retrieve the profile for your partner organization, including your organization name, primary contact details, and current Rhombus partner tier. This endpoint returns data for the organization associated with the API key used — no additional parameters are needed.
+
+## Request
+
+**Method and URL**
+
+```http
+GET https://api.ecosystem.rhmbs.app/v1/partners/profile
+```
+
+**Headers**
+
+| Header          | Value                     |
+| --------------- | ------------------------- |
+| `Authorization` | `Bearer <api-key>`        |
+
+No query parameters or request body are required. The authenticated API key determines which partner organization's profile is returned.
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://api.ecosystem.rhmbs.app/v1/partners/profile \
+  --header "Authorization: Bearer <api-key>"
+```
+
+```python Python
+import requests
+
+url = "https://api.ecosystem.rhmbs.app/v1/partners/profile"
+headers = {
+    "Authorization": "Bearer <api-key>"
+}
+
+response = requests.get(url, headers=headers)
+print(response.json())
+```
+
+</CodeGroup>
+
+## Response
+
+A successful request returns a `200 OK` status with a JSON object describing your partner organization.
+
+<ResponseField name="id" type="string" required>
+  Unique identifier for your partner organization.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Registered company name of your partner organization.
+</ResponseField>
+
+<ResponseField name="tier" type="string" required>
+  Current Rhombus partner tier. One of `registered`, `silver`, or `gold`.
+</ResponseField>
+
+<ResponseField name="contact" type="object" required>
+  Primary contact for the partner organization.
+
+  <Expandable title="contact fields">
+    <ResponseField name="contact.name" type="string" required>
+      Full name of the primary contact person.
+    </ResponseField>
+
+    <ResponseField name="contact.email" type="string" required>
+      Email address of the primary contact person.
+    </ResponseField>
+
+    <ResponseField name="contact.phone" type="string">
+      Phone number of the primary contact person.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="website" type="string">
+  Your partner organization's public website URL.
+</ResponseField>
+
+<ResponseField name="created_at" type="string" required>
+  ISO 8601 datetime representing when the partner account was created (e.g., `2023-06-15T10:30:00Z`).
+</ResponseField>
+
+<ResponseField name="api_keys_count" type="integer" required>
+  Number of currently active API keys associated with your partner organization.
+</ResponseField>
+
+**Example Response**
+
+```json
+{
+  "id": "prt_4f8a2c1d9e3b7f05",
+  "name": "Acme Security Solutions",
+  "tier": "gold",
+  "contact": {
+    "name": "Jordan Rivera",
+    "email": "jrivera@acmesecurity.com",
+    "phone": "+1-415-555-0192"
+  },
+  "website": "https://www.acmesecurity.com",
+  "created_at": "2023-06-15T10:30:00Z",
+  "api_keys_count": 3
+}
+```
+
+<Info>
+  To update your partner profile — including contact details, company name, or website — visit the Ecosystem portal directly at [https://ecosystem.rhmbs.app](https://ecosystem.rhmbs.app). Profile fields cannot be modified through the API.
+</Info>

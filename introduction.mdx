@@ -1,0 +1,43 @@
+---
+title: "Rhombus Ecosystem: Partner Opportunity Portal API"
+sidebarTitle: "Introduction"
+description: "Rhombus Ecosystem lets technology partners register deals and track every opportunity through the Rhombus pipeline — now accessible via API."
+---
+
+The Rhombus Ecosystem portal is your hub for managing deal opportunities as a Rhombus technology partner. Instead of logging into the portal UI to submit customer details, track pipeline stages, or check installation timelines, the Ecosystem API lets you connect your CRM or internal systems directly — automating opportunity registration, pulling real-time pipeline status, and receiving webhook notifications as your deals progress from triage all the way through installation.
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get your first API call working in minutes
+  </Card>
+  <Card title="Authentication" icon="key" href="/authentication">
+    Learn how to obtain and use your API key
+  </Card>
+  <Card title="Register an Opportunity" icon="circle-plus" href="/guides/register-opportunity">
+    Submit your first deal opportunity via API
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/overview">
+    Explore all available endpoints
+  </Card>
+</CardGroup>
+
+## How It Works
+
+<Steps>
+  <Step title="Sign Up & Get API Access">
+    Create your Ecosystem account at [ecosystem.rhmbs.app](https://ecosystem.rhmbs.app) and navigate to **Settings > API Keys** to generate your first API key. You'll include this key in every request you make to the API.
+  </Step>
+  <Step title="Register an Opportunity">
+    Send a `POST` request to `/v1/opportunities` with your customer's details, location, and hardware specifications — including door counts and any existing access control systems — to create a new deal in the Rhombus pipeline.
+  </Step>
+  <Step title="Track the Pipeline">
+    Poll the `GET /v1/opportunities/{id}` endpoint or subscribe to webhooks to follow your deal as it moves through each stage, gets assigned to a Rhombus AE and SE, and approaches a projected installation date.
+  </Step>
+  <Step title="Stay in Sync">
+    Integrate the API with your CRM so that every stage change, assignment update, or scheduled install is automatically reflected in your internal records — no manual data entry required.
+  </Step>
+</Steps>
+
+<Note>
+  API access is available to registered Rhombus technology partners. If you don't have an account yet, sign up at [ecosystem.rhmbs.app/sign-up](https://ecosystem.rhmbs.app/sign-up) to get started.
+</Note>

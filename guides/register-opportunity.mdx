@@ -1,0 +1,306 @@
+---
+title: "Register a Deal Opportunity via the Ecosystem API"
+sidebarTitle: "Register Opportunity"
+description: "Step-by-step guide to submitting a new deal opportunity through the Rhombus Ecosystem API, including all required and optional fields."
+---
+
+When you identify a potential Rhombus installation at a customer site, registering an opportunity via the API kicks off the Rhombus sales process and assigns the right team members to help close the deal. This guide walks you through building the request payload, submitting it to the API, and handling the response so your CRM stays in sync from the moment the opportunity is created.
+
+## Before You Begin
+
+<Note>
+  Make sure you have the following before calling the API:
+
+  - An **active Rhombus partner account** with API access enabled
+  - A valid **API key**, which you can generate from **Settings > API Keys** in the Ecosystem portal
+  - Your API key stored securely — treat it like a password and never expose it in client-side code
+</Note>
+
+## Required Information
+
+Before submitting, gather the following details about the potential installation:
+
+- **Customer contact details** — company name, primary contact name, and email address
+- **Site address** — street, city, state, and ZIP code for the installation location
+- **Hardware requirements** — estimated door count, camera count, and the name of any existing access control system (e.g., HID, Lenel, Genetec)
+
+Having this information ready ensures the opportunity is routed correctly and the assigned AE can act on it immediately.
+
+## Submit the Opportunity
+
+<Steps>
+  <Step title="Build the Request Body">
+    Construct the JSON payload using the fields below. Required fields are marked; all others are optional but improve routing accuracy.
+
+    ```json
+    {
+      "customer": {
+        "name": "Lakeside Medical Group",
+        "contact_name": "Sandra Ortiz",
+        "contact_email": "sortiz@lakesidemedical.com",
+        "contact_phone": "+13125550192"
+      },
+      "site": {
+        "address": "2847 N Michigan Ave",
+        "city": "Chicago",
+        "state": "IL",
+        "zip": "60657",
+        "country": "US"
+      },
+      "hardware": {
+        "door_count": 12,
+        "camera_count": 8,
+        "existing_access_control": "HID"
+      },
+      "projected_close_date": "2025-09-30",
+      "estimated_value_usd": 48000,
+      "notes": "Customer is replacing an aging HID system across two floors. Decision maker is the IT Director. Prefers a demo before committing."
+    }
+    ```
+
+    | Field | Type | Required | Description |
+    |---|---|---|---|
+    | `customer.name` | string | ✅ | Legal name of the customer organization |
+    | `customer.contact_name` | string | ✅ | Full name of the primary contact |
+    | `customer.contact_email` | string | ✅ | Email address of the primary contact |
+    | `customer.contact_phone` | string | | Phone number in E.164 format |
+    | `site.address` | string | ✅ | Street address of the installation site |
+    | `site.city` | string | ✅ | City |
+    | `site.state` | string | ✅ | Two-letter state/province code |
+    | `site.zip` | string | ✅ | Postal/ZIP code |
+    | `site.country` | string | | ISO 3166-1 alpha-2 country code (default: `US`) |
+    | `hardware.door_count` | integer | | Estimated number of doors to secure |
+    | `hardware.camera_count` | integer | | Estimated number of cameras to deploy |
+    | `hardware.existing_access_control` | string | | Name of current access control system, if any |
+    | `projected_close_date` | string | | Expected close date in `YYYY-MM-DD` format |
+    | `estimated_value_usd` | integer | | Estimated deal value in US dollars |
+    | `notes` | string | | Internal notes visible to the assigned AE |
+  </Step>
+
+  <Step title="Send the POST Request">
+    Submit the payload to the `POST /v1/opportunities` endpoint, including your API key in the `Authorization` header.
+
+    <CodeGroup>
+      ```bash curl
+      curl -X POST https://api.ecosystem.rhmbs.app/v1/opportunities \
+        -H "Authorization: Bearer YOUR_API_KEY" \
+        -H "Content-Type: application/json" \
+        -d '{
+          "customer": {
+            "name": "Lakeside Medical Group",
+            "contact_name": "Sandra Ortiz",
+            "contact_email": "sortiz@lakesidemedical.com",
+            "contact_phone": "+13125550192"
+          },
+          "site": {
+            "address": "2847 N Michigan Ave",
+            "city": "Chicago",
+            "state": "IL",
+            "zip": "60657",
+            "country": "US"
+          },
+          "hardware": {
+            "door_count": 12,
+            "camera_count": 8,
+            "existing_access_control": "HID"
+          },
+          "projected_close_date": "2025-09-30",
+          "estimated_value_usd": 48000,
+          "notes": "Customer replacing aging HID system. IT Director is the decision maker."
+        }'
+      ```
+
+      ```python Python
+      import requests
+
+      API_KEY = "YOUR_API_KEY"
+      BASE_URL = "https://api.ecosystem.rhmbs.app/v1"
+
+      payload = {
+          "customer": {
+              "name": "Lakeside Medical Group",
+              "contact_name": "Sandra Ortiz",
+              "contact_email": "sortiz@lakesidemedical.com",
+              "contact_phone": "+13125550192",
+          },
+          "site": {
+              "address": "2847 N Michigan Ave",
+              "city": "Chicago",
+              "state": "IL",
+              "zip": "60657",
+              "country": "US",
+          },
+          "hardware": {
+              "door_count": 12,
+              "camera_count": 8,
+              "existing_access_control": "HID",
+          },
+          "projected_close_date": "2025-09-30",
+          "estimated_value_usd": 48000,
+          "notes": "Customer replacing aging HID system. IT Director is the decision maker.",
+      }
+
+      response = requests.post(
+          f"{BASE_URL}/opportunities",
+          json=payload,
+          headers={
+              "Authorization": f"Bearer {API_KEY}",
+              "Content-Type": "application/json",
+          },
+      )
+
+      response.raise_for_status()
+      opportunity = response.json()
+      print(f"Opportunity created: {opportunity['id']}")
+      ```
+
+      ```javascript JavaScript
+      const BASE_URL = "https://api.ecosystem.rhmbs.app/v1";
+      const API_KEY = "YOUR_API_KEY";
+
+      const payload = {
+        customer: {
+          name: "Lakeside Medical Group",
+          contact_name: "Sandra Ortiz",
+          contact_email: "sortiz@lakesidemedical.com",
+          contact_phone: "+13125550192",
+        },
+        site: {
+          address: "2847 N Michigan Ave",
+          city: "Chicago",
+          state: "IL",
+          zip: "60657",
+          country: "US",
+        },
+        hardware: {
+          door_count: 12,
+          camera_count: 8,
+          existing_access_control: "HID",
+        },
+        projected_close_date: "2025-09-30",
+        estimated_value_usd: 48000,
+        notes: "Customer replacing aging HID system. IT Director is the decision maker.",
+      };
+
+      const response = await fetch(`${BASE_URL}/opportunities`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(`API error ${response.status}: ${error.message}`);
+      }
+
+      const opportunity = await response.json();
+      console.log("Opportunity created:", opportunity.id);
+      ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Handle the Response">
+    A successful submission returns `201 Created` with the full opportunity object. The response includes a system-generated `id` and an initial `stage` of `"submitted"`.
+
+    ```json
+    {
+      "id": "opp_01J8KZMX4PQRV3TNWY6CDBF85",
+      "stage": "submitted",
+      "customer": {
+        "name": "Lakeside Medical Group",
+        "contact_name": "Sandra Ortiz",
+        "contact_email": "sortiz@lakesidemedical.com",
+        "contact_phone": "+13125550192"
+      },
+      "site": {
+        "address": "2847 N Michigan Ave",
+        "city": "Chicago",
+        "state": "IL",
+        "zip": "60657",
+        "country": "US"
+      },
+      "hardware": {
+        "door_count": 12,
+        "camera_count": 8,
+        "existing_access_control": "HID"
+      },
+      "assigned_ae": null,
+      "assigned_se": null,
+      "install_partner": null,
+      "projected_close_date": "2025-09-30",
+      "projected_install_date": null,
+      "estimated_value_usd": 48000,
+      "notes": "Customer replacing aging HID system. IT Director is the decision maker.",
+      "created_at": "2025-07-14T18:43:02Z",
+      "updated_at": "2025-07-14T18:43:02Z"
+    }
+    ```
+
+    Save the `id` field (e.g., `opp_01J8KZMX4PQRV3TNWY6CDBF85`) as a custom field on the corresponding record in your CRM. You'll use this ID to retrieve status updates, match incoming webhook events, and avoid duplicate submissions.
+  </Step>
+</Steps>
+
+## Common Errors
+
+<Accordion title="400 Bad Request — Missing Required Field">
+  The request body is missing one or more required fields. The error body identifies the exact field path so you can fix it quickly.
+
+  ```json
+  {
+    "error": "validation_error",
+    "message": "One or more required fields are missing or invalid.",
+    "details": [
+      {
+        "field": "customer.contact_email",
+        "issue": "This field is required."
+      },
+      {
+        "field": "site.address",
+        "issue": "This field is required."
+      }
+    ]
+  }
+  ```
+
+  Check the `details` array and ensure all required fields listed in the [payload reference](#step-1-build-the-request-body) are present before retrying.
+</Accordion>
+
+<Accordion title="409 Conflict — Duplicate Opportunity Detected">
+  Rhombus detected an existing open opportunity for the same customer name and site location. Submitting a duplicate would create confusion for the assigned AE.
+
+  ```json
+  {
+    "error": "duplicate_opportunity",
+    "message": "An open opportunity already exists for this customer and location.",
+    "existing_opportunity_id": "opp_01J7AQMNX3WBVK2DPHY0CGRE41"
+  }
+  ```
+
+  Use the `existing_opportunity_id` in the response to retrieve or update the original opportunity instead of creating a new one.
+</Accordion>
+
+<Accordion title="422 Unprocessable Entity — Invalid Field Value">
+  The request was well-formed but contained a value the API cannot process — for example, a date in the wrong format or a negative door count.
+
+  ```json
+  {
+    "error": "invalid_field_value",
+    "message": "One or more field values are invalid.",
+    "details": [
+      {
+        "field": "projected_close_date",
+        "issue": "Date must be in YYYY-MM-DD format. Received: '09/30/2025'."
+      }
+    ]
+  }
+  ```
+
+  Correct the flagged value and resubmit. Common causes include non-ISO date strings, negative numeric values, and unsupported country codes.
+</Accordion>
+
+<Tip>
+  Use the `notes` field to pass context directly to the assigned AE — for example, the decision-maker's concerns, preferred contact times, or competing vendors under consideration. Notes are visible to the Rhombus team inside the Ecosystem portal as soon as the opportunity is submitted.
+</Tip>

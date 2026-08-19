@@ -1,0 +1,139 @@
+---
+title: "Authenticate with the Rhombus Ecosystem API"
+sidebarTitle: "Authentication"
+description: "The Ecosystem API uses Bearer token authentication. Learn how to generate your API key, pass it in requests, and handle auth errors."
+---
+
+All requests to the Rhombus Ecosystem API require a valid API key passed as a Bearer token in the `Authorization` header. API keys are scoped to your partner organization, meaning any key you generate grants access to your org's opportunities, users, and profile data — so treat them with the same care as a password.
+
+## Generating an API Key
+
+<Steps>
+  <Step title="Sign in to the Ecosystem portal">
+    Go to [ecosystem.rhmbs.app](https://ecosystem.rhmbs.app) and sign in with your partner account credentials. You must have an **Admin** role to create and manage API keys.
+  </Step>
+  <Step title="Navigate to Settings > API Keys">
+    Click your account avatar in the top-right corner, then select **Settings**. Open the **API Keys** tab to see all existing keys for your organization.
+  </Step>
+  <Step title="Generate a new key">
+    Click **Generate New Key**. Enter a descriptive label that identifies the integration this key will be used for — for example, `Salesforce CRM` or `Internal Dashboard`. Clear names make it easier to audit and revoke individual keys later.
+  </Step>
+  <Step title="Copy and store the key immediately">
+    Your new API key is displayed only once. Copy it now and store it in a secure location such as a secrets manager, password vault, or your deployment environment's secret store.
+
+    <Warning>
+      Never commit your API key to source control. If a key is accidentally exposed in a repository, revoke it immediately from the portal and generate a replacement.
+    </Warning>
+
+    <Tip>
+      Store your API key as an environment variable (for example, `RHOMBUS_API_KEY`) and reference it in your code. This keeps secrets out of your codebase and makes it easy to rotate keys without changing application logic.
+    </Tip>
+  </Step>
+</Steps>
+
+## Using Your API Key
+
+Include your API key in the `Authorization` header of every request using the `Bearer` scheme:
+
+```
+Authorization: Bearer <your-api-key>
+```
+
+The examples below show how to attach the header in common HTTP clients:
+
+<CodeGroup>
+  ```bash curl
+  curl -X GET https://api.ecosystem.rhmbs.app/v1/opportunities \
+    -H "Authorization: Bearer YOUR_API_KEY" \
+    -H "Accept: application/json"
+  ```
+
+  ```python Python
+  import requests
+  import os
+
+  headers = {
+      "Authorization": f"Bearer {os.environ['RHOMBUS_API_KEY']}",
+      "Accept": "application/json"
+  }
+
+  response = requests.get(
+      "https://api.ecosystem.rhmbs.app/v1/opportunities",
+      headers=headers
+  )
+  print(response.json())
+  ```
+
+  ```javascript JavaScript
+  const response = await fetch(
+    "https://api.ecosystem.rhmbs.app/v1/opportunities",
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${process.env.RHOMBUS_API_KEY}`,
+        Accept: "application/json",
+      },
+    }
+  );
+
+  const data = await response.json();
+  console.log(data);
+  ```
+</CodeGroup>
+
+## API Key Management
+
+You can create as many API keys as your integrations require — there is no enforced limit per organization. A common practice is to create one key per integration (for example, a separate key for your CRM, your internal dashboard, and your staging environment). This makes it straightforward to:
+
+- **Audit usage** — identify which integration is responsible for which API activity.
+- **Revoke selectively** — disable a single integration without disrupting others.
+- **Rotate safely** — generate a replacement key, update the target system, then revoke the old key, all without downtime.
+
+Revocation takes effect immediately. Any request using a revoked key will receive a `401 Unauthorized` response.
+
+## Authentication Errors
+
+<Accordion title="401 Unauthorized — Missing or malformed token">
+  Your request did not include a valid `Authorization` header, or the token is malformed (for example, the `Bearer ` prefix is missing).
+
+  **Resolution:** Verify that your request includes the header in the exact format `Authorization: Bearer <your-api-key>` and that the key value has not been truncated.
+
+  ```json
+  {
+    "error": {
+      "code": "unauthorized",
+      "message": "A valid Bearer token is required."
+    }
+  }
+  ```
+</Accordion>
+
+<Accordion title="403 Forbidden — Insufficient permissions">
+  Your API key is valid, but the action you're attempting requires a higher permission level than your key or role allows. For example, only Admin-role users can manage API keys and partner profile data.
+
+  **Resolution:** Confirm that the partner account associated with this key has the necessary role. Contact your Rhombus partner manager if you believe your permissions are incorrectly configured.
+
+  ```json
+  {
+    "error": {
+      "code": "forbidden",
+      "message": "Your account does not have permission to perform this action."
+    }
+  }
+  ```
+</Accordion>
+
+<Accordion title="429 Too Many Requests — Rate limit exceeded">
+  Your integration has exceeded the API rate limit for your partner tier. The response includes a `Retry-After` header indicating how many seconds to wait before retrying.
+
+  **Resolution:** Implement exponential backoff in your retry logic and respect the `Retry-After` value. If you consistently hit rate limits, contact your Rhombus partner manager to discuss a tier upgrade.
+
+  ```json
+  {
+    "error": {
+      "code": "rate_limit_exceeded",
+      "message": "Too many requests. Please retry after the indicated delay."
+    }
+  }
+  ```
+</Accordion>

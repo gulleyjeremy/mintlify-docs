@@ -1,30 +1,11 @@
 {
-  "$schema": "https://mintlify.com/docs.json",
+  "projectType": "api-service",
+  "projectName": "Rhombus Ecosystem",
+  "projectDescription": "A partner portal API that enables technology OEM partners to programmatically register deal opportunities and track them through the Rhombus sales and installation pipeline.",
   "theme": "luma",
-  "name": "Rhombus Ecosystem",
-  "colors": {
-    "primary": "#4bebff",
-    "light": "#159fdf",
-    "dark": "#0c8494"
-  },
-  "favicon": "https://media.brand.dev/dd6925cc-5894-4712-91b9-6236eaa0db3e.svg",
-  "logo": {
-    "light": "https://media.brand.dev/83a97718-6203-457c-8c4b-7657e8ac0cfb.svg",
-    "dark": "https://media.brand.dev/83a97718-6203-457c-8c4b-7657e8ac0cfb.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Ecosystem Portal",
-        "href": "https://ecosystem.rhmbs.app"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Sign In",
-      "href": "https://ecosystem.rhmbs.app/sign-in"
-    }
-  },
+  "primaryColor": "#4bebff",
+  "lightColor": "#159fdf",
+  "darkColor": "#0c8494",
   "navigation": {
     "tabs": [
       {
@@ -88,9 +69,21 @@
       }
     ]
   },
-  "footer": {
-    "socials": {
-      "linkedin": "https://www.linkedin.com/company/rhombus-systems"
-    }
-  }
+  "keyFeatures": [
+    "Deal opportunity registration with customer, location, and hardware details",
+    "Real-time pipeline tracking from triage through installation",
+    "Rhombus AE and SE assignment visibility",
+    "Projected installation date tracking",
+    "CRM and internal systems integration via API",
+    "Partner account management and user administration"
+  ],
+  "publicApiSurface": [
+    "POST /opportunities — Register a new deal opportunity",
+    "GET /opportunities/{id} — Retrieve opportunity details",
+    "GET /opportunities — List all opportunities with pipeline status",
+    "PATCH /opportunities/{id} — Update opportunity details",
+    "GET /partners/profile — Retrieve partner organization profile",
+    "GET /partners/users — List users in the partner organization",
+    "Webhook events: opportunity.created, opportunity.stage_changed, opportunity.assigned, opportunity.scheduled"
+  ]
 }

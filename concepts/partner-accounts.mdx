@@ -1,0 +1,71 @@
+---
+title: "Partner Accounts and Users in Rhombus Ecosystem"
+sidebarTitle: "Partner Accounts"
+description: "Understand how partner organizations, user roles, and API keys work in the Rhombus Ecosystem portal."
+---
+
+The Rhombus Ecosystem portal is organized around partner organizations. Each technology OEM that integrates with Rhombus has a single partner account, and all of that company's users — from admins managing API keys to members registering deals — operate within that shared organizational context. Understanding this structure helps you model your integration correctly and apply the right access controls.
+
+## Partner Organizations
+
+A partner organization represents a technology company that has been registered as an official Rhombus integration partner. Your org is the root of everything in the Ecosystem: it owns your opportunities, your users, and your API keys.
+
+The organization profile includes:
+
+- **Name** — the company's registered name as it appears in the Rhombus partner directory.
+- **Contact information** — primary business contact details for your account.
+- **Partner tier** — your current program tier (Registered, Silver, or Gold), which determines your rate limits and available features.
+
+You can retrieve your organization's profile via the API at `GET /v1/partner/profile`. Updates to the profile are currently handled through the portal UI.
+
+## Users
+
+Every person who accesses the Ecosystem portal does so as a user belonging to your partner organization. Users are assigned one of two roles:
+
+| Role | Capabilities |
+|------|-------------|
+| **Admin** | Manage users, generate and revoke API keys, edit the organization profile, register and view opportunities |
+| **Member** | Register new opportunities and view the status of existing ones |
+
+<Note>
+  User management — inviting new members, changing roles, and removing users — is currently handled through the portal UI at [ecosystem.rhmbs.app](https://ecosystem.rhmbs.app). The API provides read access to user data, such as listing users associated with your org.
+</Note>
+
+## API Keys
+
+API keys in the Rhombus Ecosystem are scoped to the partner organization, not to individual users. This means:
+
+- Any valid key grants access to your entire org's data within the API's permission model.
+- Keys do not expire automatically — you control their lifecycle through the portal.
+- Each key carries a **label** you assign at creation time.
+
+Follow these practices to keep your integration secure and maintainable:
+
+<CardGroup cols={2}>
+  <Card title="One key per integration" icon="key">
+    Create a separate key for each system that connects to the API — your CRM, your internal dashboard, your staging environment. This isolates the blast radius if a key is compromised.
+  </Card>
+  <Card title="Label keys clearly" icon="tag">
+    Use descriptive names like `Salesforce Prod` or `Internal Dashboard - Staging` so you can immediately identify which system a key belongs to during an audit or incident.
+  </Card>
+  <Card title="Rotate regularly" icon="arrows-rotate">
+    Generate a replacement key, update the target system, then revoke the old key. Revocation is instant, so the handover window is minimal.
+  </Card>
+  <Card title="Store secrets safely" icon="lock">
+    Never hard-code API keys in source code. Use environment variables, a secrets manager, or your CI/CD platform's secret store.
+  </Card>
+</CardGroup>
+
+## Partner Tiers
+
+Rhombus offers multiple partner tiers within the Ecosystem program. Your tier affects the API rate limits applied to your organization as well as which features and deal types you can access through both the portal and the API.
+
+| Tier | Description |
+|------|-------------|
+| **Registered** | Entry-level partnership. Standard API rate limits apply. |
+| **Silver** | Mid-tier partnership with elevated API rate limits and additional deal support. |
+| **Gold** | Premier partnership with the highest rate limits, dedicated Rhombus AE support, and early access to new API features. |
+
+<Info>
+  Contact your Rhombus partner manager to learn about your current tier, discuss an upgrade, or understand how tier-specific rate limits apply to your integration. If you don't yet have a partner manager assigned, reach out through the portal at [ecosystem.rhmbs.app](https://ecosystem.rhmbs.app).
+</Info>

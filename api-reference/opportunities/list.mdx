@@ -1,0 +1,180 @@
+---
+title: "GET /opportunities — List All Opportunities"
+sidebarTitle: "List Opportunities"
+description: "GET /v1/opportunities — Retrieve a paginated list of all opportunities. Filter by stage and sort by creation date. Returns array with pagination metadata."
+---
+
+Retrieve a paginated list of all opportunities registered by your partner account, with optional filters to narrow results by pipeline stage. Use this endpoint to build dashboards, sync your CRM, or audit which deals require follow-up. Results are sorted by creation date by default and support limit/offset pagination.
+
+## Request
+
+```http
+GET https://api.ecosystem.rhmbs.app/v1/opportunities
+```
+
+### Query Parameters
+
+<ParamField query="stage" type="string">
+  Filter results to only opportunities in a specific pipeline stage. Omit this parameter to return opportunities across all stages.
+
+  Accepted values: `submitted`, `in_triage`, `ae_assigned`, `se_engaged`, `pending_installation`, `scheduled`, `installed`, `closed_lost`.
+</ParamField>
+
+<ParamField query="limit" type="integer" default="20">
+  Number of opportunity objects to return per page. Maximum value is `100`.
+</ParamField>
+
+<ParamField query="offset" type="integer" default="0">
+  Zero-based index of the first result to return. Use in combination with `limit` to paginate through large result sets.
+</ParamField>
+
+<ParamField query="sort" type="string" default="created_at_desc">
+  Sort order for results. Accepted values:
+
+  - `created_at_desc` — most recently created first (default)
+  - `created_at_asc` — oldest first
+</ParamField>
+
+## Example Request
+
+The following request retrieves up to 10 opportunities that are currently in the `pending_installation` stage.
+
+```bash cURL
+curl --request GET \
+  --url 'https://api.ecosystem.rhmbs.app/v1/opportunities?stage=pending_installation&limit=10' \
+  --header 'Authorization: Bearer <api-key>'
+```
+
+<Tip>
+  To iterate through all opportunities, increment `offset` by your `limit` value on each request until `has_more` is `false`.
+</Tip>
+
+## Response
+
+A successful request returns `200 OK` with a paginated result object.
+
+### Response Fields
+
+<ResponseField name="data" type="array">
+  Array of opportunity objects matching the query. Each object contains the same fields as the [Get Opportunity](/api-reference/opportunities/get) response.
+</ResponseField>
+
+<ResponseField name="total_count" type="integer">
+  Total number of opportunities matching the applied filters, regardless of pagination. Use this value to calculate the number of pages.
+</ResponseField>
+
+<ResponseField name="limit" type="integer">
+  The `limit` value applied to this request.
+</ResponseField>
+
+<ResponseField name="offset" type="integer">
+  The `offset` value applied to this request.
+</ResponseField>
+
+<ResponseField name="has_more" type="boolean">
+  `true` if there are additional results beyond the current page. `false` if this page contains the last results.
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "data": [
+    {
+      "id": "opp_01hx9z3kqe4vb8mnpj7wtrcfd2",
+      "name": "Lakeside Medical Group – Chicago HQ",
+      "stage": "pending_installation",
+      "customer": {
+        "name": "Lakeside Medical Group",
+        "contact_name": "Sandra Okafor",
+        "contact_email": "sokafor@lakesidemedical.example.com",
+        "contact_phone": "+13125550182"
+      },
+      "location": {
+        "address": "875 N Michigan Ave",
+        "city": "Chicago",
+        "state": "IL",
+        "zip": "60611",
+        "country": "US"
+      },
+      "hardware": {
+        "door_count": 12,
+        "camera_count": 8,
+        "existing_access_control": "HID Prox readers, no central management software",
+        "notes": "Server room and pharmacy require anti-passback."
+      },
+      "notes": "Customer has a hard Q3 compliance deadline.",
+      "assigned_ae": {
+        "id": "usr_ae_0293xkpq",
+        "name": "Marcus Reyes",
+        "email": "mreyes@rhmbs.com"
+      },
+      "assigned_se": {
+        "id": "usr_se_0481zlmt",
+        "name": "Priya Nandakumar",
+        "email": "pnandakumar@rhmbs.com"
+      },
+      "install_partner": {
+        "id": "ipt_77bqrx",
+        "name": "Midwest Security Installations LLC"
+      },
+      "projected_install_date": "2025-08-14",
+      "created_at": "2025-06-04T14:22:08Z",
+      "updated_at": "2025-06-18T09:41:00Z"
+    },
+    {
+      "id": "opp_02jy1a4lrf5wc9noqk8xusdge3",
+      "name": "Greenway Logistics – Denver Warehouse",
+      "stage": "pending_installation",
+      "customer": {
+        "name": "Greenway Logistics Inc.",
+        "contact_name": "Tom Brecker",
+        "contact_email": "tbrecker@greenwaylogistics.example.com",
+        "contact_phone": "+13035550294"
+      },
+      "location": {
+        "address": "4200 Brighton Blvd",
+        "city": "Denver",
+        "state": "CO",
+        "zip": "80216",
+        "country": "US"
+      },
+      "hardware": {
+        "door_count": 6,
+        "camera_count": 14,
+        "existing_access_control": null,
+        "notes": "Warehouse has forklift traffic — ensure camera mounting heights are 15ft+."
+      },
+      "notes": null,
+      "assigned_ae": {
+        "id": "usr_ae_0156wnqv",
+        "name": "Destiny Callahan",
+        "email": "dcallahan@rhmbs.com"
+      },
+      "assigned_se": {
+        "id": "usr_se_0391cmhf",
+        "name": "Jordan Wu",
+        "email": "jwu@rhmbs.com"
+      },
+      "install_partner": {
+        "id": "ipt_43qmtz",
+        "name": "Rocky Mountain AV & Security"
+      },
+      "projected_install_date": "2025-08-21",
+      "created_at": "2025-06-07T08:15:44Z",
+      "updated_at": "2025-06-17T14:30:12Z"
+    }
+  ],
+  "total_count": 2,
+  "limit": 10,
+  "offset": 0,
+  "has_more": false
+}
+```
+
+## Error Responses
+
+| Status | Code | Description |
+|--------|------|-------------|
+| `401 Unauthorized` | `unauthorized` | The API key is missing, expired, or invalid. Check that your `Authorization` header is correctly formatted. |
+| `400 Bad Request` | `invalid_stage` | The value provided for the `stage` query parameter is not a recognized pipeline stage. Check the list of accepted values and retry. |
